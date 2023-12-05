@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>img/checkmark.png</file>
+        <file>img/favicon.png</file>
+        <file>img/warning.png</file>
+    </qresource>
+</RCC>
