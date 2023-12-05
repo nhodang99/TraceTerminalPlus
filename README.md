@@ -17,5 +17,6 @@ This is a side project for me to practice how to build an app from scratch.
 
 ## To do list
 - Copy features is not working
-- Connect to remote host only, serial host only
+- Custom highlights
 - Searching
+- Connect to remote host only, serial host only
