@@ -14,42 +14,6 @@ namespace
     const QString endTag        = QStringLiteral("</font>");
 }
 
-
-void convert(QString& filePath)
-{
-    QFileInfo original(filePath);
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        qDebug() << "Cannot open trace file";
-        return;
-    }
-
-    QFile htmlFile(original.absolutePath() + "/" + original.baseName() + ".html");
-    if (!htmlFile.open(QIODevice::ReadWrite | QIODevice::Text))
-    {
-        qDebug() << "Cannot create new html file";
-        return;
-    }
-
-    QTextStream in(&file);
-    QTextStream out(&htmlFile);
-    while (!in.atEnd())
-    {
-        QString line = in.readLine();
-        processLine(line);
-        out << line;
-    }
-
-    qDebug() << "reading file done";
-    htmlFile.close();
-    file.close();
-
-    // Open saved directory - @todo: remove this
-    QFileInfo newFileDir(htmlFile);
-    QProcess::startDetached("explorer.exe", {"/select,", QDir::toNativeSeparators(newFileDir.absoluteFilePath())});
-}
-
 void processLine(QString& line)
 {
     QString tag;
