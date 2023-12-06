@@ -16,7 +16,8 @@ This is also a side project for me to practice how to build an app from scratch.
 - Open and convert txt file, save file
 
 ## To do list
-- Some time receive the wrong trace order
+- Disable autoscroll working incorrectly if scroll down to the end of the view (only when at the end)
+- Sometimes receive the wrong trace order (under monitoring)
 - Custom highlights
 - Searching
 - Connect to remote host only, serial host only

@@ -98,4 +98,12 @@ void UdpServer::processRawData(const QByteArray& raw)
     //qDebug() << "-----------------";
 
     emit newDataReady(textList);
+
+    // TEST: connect directly to view
+//    for (const auto& line : textList)
+//    {
+//        emit newViewDataReady(line);
+//        // On windows, QThread::usleep is rounded up to 1ms anyway...
+//        QThread::usleep(500);
+//    }
 }

@@ -22,6 +22,7 @@ private slots:
 signals:
     void newDataReady(QStringList);
     void bindResult(QHostAddress, bool);
+    //void newViewDataReady(QString); // TEST
 
 private:
     void processRawData(const QByteArray&);

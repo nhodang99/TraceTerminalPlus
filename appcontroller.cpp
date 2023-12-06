@@ -16,15 +16,18 @@ AppController::AppController(UdpServer* server, TraceView* view)
 {
     connect(m_server, &UdpServer::bindResult,
             this, &AppController::onSocketBindResult, Qt::QueuedConnection);
-    connect(m_server, &UdpServer::newDataReady,
-            this, &AppController::onNewDataReady, Qt::QueuedConnection);
-
     connect(m_liveview, &TraceView::changeInterface,
             this, &AppController::onItfChangeRequested, Qt::QueuedConnection);
+    connect(m_server, &UdpServer::newDataReady,
+            this, &AppController::onNewDataReady);
 
     // Sending QString to gui thread from a non main thread must use signal slot
     connect(this, &AppController::newDataReady,
-            m_liveview, &TraceView::onNewDataReady, Qt::QueuedConnection);
+            m_liveview, &TraceView::onNewDataReady);
+
+    // TEST
+//    connect(m_server, &UdpServer::newViewDataReady,
+//            m_liveview, &TraceView::onNewDataReady);
 
     QSettings settings(CONFIG, QSettings::IniFormat);
     auto addr = settings.value(INTERFACE, QHostAddress(QHostAddress::Any).toString()).toString();
