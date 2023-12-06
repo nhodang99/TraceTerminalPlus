@@ -315,4 +315,8 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
         msg += "</font>";
     }
     append(msg);
+    if (m_autoScroll)
+    {
+        moveCursor(QTextCursor::End);
+    }
 }

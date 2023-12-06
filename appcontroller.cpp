@@ -82,16 +82,28 @@ void AppController::onNewDataReady(QStringList data)
 }
 
 ///
-/// \brief Send data to view line by line
+/// \brief Send data to view block by block to create scroll effect
+/// \note The usleep function on Windows is rounded up to 1ms, so if emit line by line
+/// the scroll speed is very slow. Instead send the block of 3 lines.
 /// \param data
 ///
 void AppController::sendDataToView(QStringList& data)
 {
     QMutexLocker locker(&m_mutex);
-    for (const auto& line : data)
+    auto length = data.length();
+    for (auto i = 0; i < length; i += 3)
     {
-        emit newDataReady(line);
-        // On windows, QThread::usleep is rounded up to 1ms...
-        QThread::usleep(500);
+        auto textBlock = data.at(i);
+        if (i + 1 < length)
+        {
+            textBlock += "<br>" + data.at(i + 1);
+            if (i + 2 < length)
+            {
+                textBlock += "<br>" + data.at(i + 2);
+            }
+        }
+        emit newDataReady(textBlock);
+        // On windows, QThread::usleep is rounded up to 1ms anyway...
+        QThread::msleep(1);
     }
 }

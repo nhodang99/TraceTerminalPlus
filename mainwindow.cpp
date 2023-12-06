@@ -100,7 +100,7 @@ void MainWindow::open()
     if (filename.isEmpty())
         return;
 
-    // Only one selected allowed
+    // Only one selected file allowed
     QFileInfo fileInfo(filename[0]);
     for (auto i = 1; i < m_tabWidget->count(); ++i) // exclude default view
     {
@@ -127,7 +127,7 @@ void MainWindow::open()
         {
             auto line = in.readLine();
             processLine(line);
-            offlineView->insertHtml(line);
+            offlineView->append(line);
         }
     }
     else
@@ -142,7 +142,8 @@ void MainWindow::open()
 
 void MainWindow::save()
 {
-    m_liveView->save();
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->save();
 }
 
 void MainWindow::copy()
@@ -158,7 +159,7 @@ void MainWindow::onCopyAvailable(bool a)
 
 void MainWindow::clear()
 {
-    m_liveView->clear();
+    //m_liveView->clear();
 }
 
 void MainWindow::about()
