@@ -42,10 +42,9 @@ MainWindow::MainWindow()
     auto geometry = settings.value(MAINWINDOW_GEOMETRY, QRect(540, 400, 650, 400)).toRect();
     setGeometry(geometry);
 
-    connect(m_tabWidget, &QTabWidget::tabCloseRequested,
-            this, &MainWindow::onTabCloseRequested);
-    connect(m_tabWidget, &QTabWidget::currentChanged,
-            this, &MainWindow::onCurrentTabChanged);
+    connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::onTabCloseRequested);
+    connect(m_tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onCurrentTabChanged);        
+    connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
 }
 
 ///
@@ -136,6 +135,7 @@ void MainWindow::open()
         offlineView->setText(in.readAll());
     }
 
+    connect(offlineView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
     m_tabWidget->addTab(offlineView, fileInfo.fileName());
     m_tabWidget->setCurrentIndex(m_tabWidget->count() - 1);
 }
@@ -147,8 +147,8 @@ void MainWindow::save()
 
 void MainWindow::copy()
 {
-    // @todo
-    m_liveView->copy();
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->copy();
 }
 
 void MainWindow::onCopyAvailable(bool a)
@@ -181,7 +181,7 @@ void MainWindow::createActions()
     saveAct->setStatusTip(tr("Save the document to disk"));
     connect(saveAct, &QAction::triggered, this, &MainWindow::save);
 
-    exitAct = new QAction(tr("E&xit"), this);
+    exitAct = new QAction(tr("&Exit"), this);
     exitAct->setShortcuts(QKeySequence::Quit);
     exitAct->setStatusTip(tr("Exit the application"));
     connect(exitAct, &QAction::triggered, this, &QWidget::close);

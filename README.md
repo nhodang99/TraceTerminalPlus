@@ -6,7 +6,7 @@ TraceTerminal++ is a debugging utility that serves greatly for debugging embedde
 
 TraceTerminal++ will catch every data sent to its connected interface address via UDP protocol (any host, any IPv6 host, local host,...port 911). The embedded app will need a feature to send traces (debugging messages) over UDP to use this tool. The traces with special keywords in-line will be highlight with special color for easy debugging ability (" WARNG - ", " ERROR - ",... and some custom highlights).
 
-This tool is inspired by TraceTerminal, a internal tool, but with more features: the ability to save the file to html (to keep the highlight colors), import files and search in file.
+This tool is inspired by TraceTerminal, a tool written purely in C++ and WindowsAPI, but with more features: the ability to save the file to html (to keep the highlight colors), import files and search in file.
 
 This is also a side project for me to practice how to build an app from scratch.
 
@@ -16,7 +16,7 @@ This is also a side project for me to practice how to build an app from scratch.
 - Open and convert txt file, save file
 
 ## To do list
-- Copy features is not working
+- Some time receive the wrong trace order
 - Custom highlights
 - Searching
 - Connect to remote host only, serial host only
