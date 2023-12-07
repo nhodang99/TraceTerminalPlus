@@ -43,7 +43,6 @@ private:
     QAction *saveAct;
     QAction *clearAct;
     QAction *clearUntilHereAct;
-
     QAction *setAutoScrollAct;
 
     QAction *setAnyItfAct;
@@ -57,6 +56,7 @@ private:
     QAction* m_lastSetItfAct{ nullptr };
     bool m_liveview{ false };
     bool m_autoScroll{ false };
+    QTextCursor m_clearUntilCursor;
 };
 
 #endif // TRACEVIEW_H

@@ -1,11 +1,13 @@
+#include "inc/traceview.h"
 #include <QtWidgets>
-#include "traceview.h"
 
 TraceView::TraceView(bool live, bool autoscroll)
     : m_liveview(live)
     , m_autoScroll(autoscroll)
 {
     setLineWrapMode(QTextEdit::NoWrap);
+    //setStyleSheet("text-indent:20");
+    setStyleSheet("white-space:pre-wrap");
     setAcceptRichText(true);
     setReadOnly(true);
     QFont font("Helvetica");
@@ -43,9 +45,9 @@ void TraceView::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::RightButton)
     {
-        // @todo: lose the selected
-        auto cursor = cursorForPosition(event->pos());
-        setTextCursor(cursor);
+        // Need to save the current cursor when right-click
+        // to use for action Clear until here
+        m_clearUntilCursor = cursorForPosition(event->pos());
     }
     QTextEdit::mousePressEvent(event);
 }
@@ -223,7 +225,7 @@ void TraceView::clear()
 void TraceView::clearUntilHere()
 {
     auto cursor = textCursor();
-    int mousePos = cursor.position();
+    int mousePos = m_clearUntilCursor.position();
 
     // Select the text block from start to the end of this line (including \n)
     cursor.movePosition(QTextCursor::Start);
@@ -304,7 +306,7 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
     }
     else
     {
-        // If bind fail, don't active the options because it's useless
+        // If bind fail, don't active the old option too
         if (m_lastSetItfAct != nullptr)
         {
             m_lastSetItfAct->setIconVisibleInMenu(false);
@@ -315,4 +317,8 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
         msg += "</font>";
     }
     append(msg);
+    if (m_autoScroll)
+    {
+        moveCursor(QTextCursor::End);
+    }
 }

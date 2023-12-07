@@ -1,26 +1,19 @@
+#include "inc/mainwindow.h"
+#include "inc/utils.h"
 #include <QtWidgets>
-#include "mainwindow.h"
-#include "utils.h"
 #include <QSettings>
-
-namespace {
-const QString CONFIG                = QStringLiteral("./config.ini");
-const QString TRACEVIEW_AUTOSCROLL  = QStringLiteral("traceview/autoscroll");
-const QString MAINWINDOW_FULLSCREEN = QStringLiteral("mainwindow/windowState");
-const QString MAINWINDOW_GEOMETRY   = QStringLiteral("mainwindow/geometry");
-}
 
 MainWindow::MainWindow()
     : QMainWindow()
 {
-    QSettings settings(CONFIG, QSettings::IniFormat);
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
 
     // Main tab widget
     m_tabWidget = new QTabWidget;
     m_tabWidget->setTabsClosable(true);
     setCentralWidget(m_tabWidget);
     // Live traceview
-    auto autoscroll = settings.value(TRACEVIEW_AUTOSCROLL, true).toBool();
+    auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
     m_liveView = new TraceView(true, autoscroll);
     m_tabWidget->addTab(m_liveView, "Live Trace");
     // Hide the close button of live view
@@ -36,16 +29,14 @@ MainWindow::MainWindow()
     // Init the main window property
     setWindowTitle(tr("TraceTerminal++ - Live View"));
     setWindowIcon(QIcon(":/img/favicon.png"));
-    setMinimumSize(160, 160);
-    auto windowState = settings.value(MAINWINDOW_FULLSCREEN, 0).toInt();
-    setWindowState((Qt::WindowStates)windowState);
-    auto geometry = settings.value(MAINWINDOW_GEOMETRY, QRect(540, 400, 650, 400)).toRect();
-    setGeometry(geometry);
+    setMinimumSize(480, 360);
+    restoreGeometry(settings.value(Config::MAINWINDOW_GEOMETRY).toByteArray());
 
     connect(m_tabWidget, &QTabWidget::tabCloseRequested,
             this, &MainWindow::onTabCloseRequested);
     connect(m_tabWidget, &QTabWidget::currentChanged,
             this, &MainWindow::onCurrentTabChanged);
+    connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
 }
 
 ///
@@ -54,15 +45,9 @@ MainWindow::MainWindow()
 ///
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    QSettings settings(CONFIG, QSettings::IniFormat);
-    settings.setValue(MAINWINDOW_FULLSCREEN, (int)windowState());
-
-    // Do not save the geometry of maximized window
-    if (windowState() != Qt::WindowMaximized)
-    {
-        settings.setValue(MAINWINDOW_GEOMETRY, geometry());
-    }
-    settings.setValue(TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::MAINWINDOW_GEOMETRY, saveGeometry());
+    settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
     event->accept();
 }
 
@@ -128,7 +113,7 @@ void MainWindow::open()
         {
             auto line = in.readLine();
             processLine(line);
-            offlineView->insertHtml(line);
+            offlineView->append(line);
         }
     }
     else
@@ -136,19 +121,21 @@ void MainWindow::open()
         offlineView->setText(in.readAll());
     }
 
+    connect(offlineView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
     m_tabWidget->addTab(offlineView, fileInfo.fileName());
     m_tabWidget->setCurrentIndex(m_tabWidget->count() - 1);
 }
 
 void MainWindow::save()
 {
-    m_liveView->save();
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->save();
 }
 
 void MainWindow::copy()
 {
-    // @todo
-    m_liveView->copy();
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->copy();
 }
 
 void MainWindow::onCopyAvailable(bool a)
@@ -181,7 +168,7 @@ void MainWindow::createActions()
     saveAct->setStatusTip(tr("Save the document to disk"));
     connect(saveAct, &QAction::triggered, this, &MainWindow::save);
 
-    exitAct = new QAction(tr("E&xit"), this);
+    exitAct = new QAction(tr("&Exit"), this);
     exitAct->setShortcuts(QKeySequence::Quit);
     exitAct->setStatusTip(tr("Exit the application"));
     connect(exitAct, &QAction::triggered, this, &QWidget::close);
