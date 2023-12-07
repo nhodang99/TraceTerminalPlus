@@ -1,14 +1,10 @@
+#include "utils.h"
 #include "appcontroller.h"
 #include "udpserver.h"
 #include "traceview.h"
 #include <QSettings>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QThread>
-
-namespace {
-const QString CONFIG     = QStringLiteral("./config.ini");
-const QString INTERFACE  = QStringLiteral("udpSocket/interface");
-}
 
 AppController::AppController(UdpServer* server, TraceView* view)
     : m_server(server)
@@ -19,25 +15,22 @@ AppController::AppController(UdpServer* server, TraceView* view)
     connect(m_liveview, &TraceView::changeInterface,
             this, &AppController::onItfChangeRequested, Qt::QueuedConnection);
     connect(m_server, &UdpServer::newDataReady,
-            this, &AppController::onNewDataReady);
+            this, &AppController::onNewDataReady, Qt::QueuedConnection);
 
     // Sending QString to gui thread from a non main thread must use signal slot
     connect(this, &AppController::newDataReady,
-            m_liveview, &TraceView::onNewDataReady);
+            m_liveview, &TraceView::onNewDataReady, Qt::QueuedConnection);
 
-    // TEST
-//    connect(m_server, &UdpServer::newViewDataReady,
-//            m_liveview, &TraceView::onNewDataReady);
-
-    QSettings settings(CONFIG, QSettings::IniFormat);
-    auto addr = settings.value(INTERFACE, QHostAddress(QHostAddress::Any).toString()).toString();
-    m_server->initSocket(QHostAddress(addr));
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    auto addr = settings.value(Config::INTERFACE, QHostAddress(QHostAddress::Any).toString()).toString();
+    //auto port = settings.value(Config::PORT, 911).toInt();
+    m_server->initSocket(QHostAddress(addr), port);
 }
 
 AppController::~AppController()
 {
-    QSettings settings(CONFIG, QSettings::IniFormat);
-    settings.setValue(INTERFACE, m_currentItf.toString());
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::INTERFACE, m_currentItf.toString());
 
     delete m_server;
     m_server = nullptr;
@@ -82,7 +75,7 @@ void AppController::onNewDataReady(QStringList data)
 }
 
 ///
-/// \brief Send data to view block by block to create scroll effect
+/// \brief Send data to view block by block
 /// \note The usleep function on Windows is rounded up to 1ms, so if emit line by line
 /// the scroll speed is very slow. Instead send the block of 3 lines.
 /// \param data

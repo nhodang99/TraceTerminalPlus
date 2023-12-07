@@ -1,26 +1,20 @@
 #include <QtWidgets>
+#include <QSettings>
 #include "mainwindow.h"
 #include "utils.h"
-#include <QSettings>
-
-namespace {
-const QString CONFIG                = QStringLiteral("./config.ini");
-const QString TRACEVIEW_AUTOSCROLL  = QStringLiteral("traceview/autoscroll");
-const QString MAINWINDOW_FULLSCREEN = QStringLiteral("mainwindow/windowState");
-const QString MAINWINDOW_GEOMETRY   = QStringLiteral("mainwindow/geometry");
-}
 
 MainWindow::MainWindow()
     : QMainWindow()
 {
-    QSettings settings(CONFIG, QSettings::IniFormat);
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
 
     // Main tab widget
     m_tabWidget = new QTabWidget;
     m_tabWidget->setTabsClosable(true);
     setCentralWidget(m_tabWidget);
+    
     // Live traceview
-    auto autoscroll = settings.value(TRACEVIEW_AUTOSCROLL, true).toBool();
+    auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
     m_liveView = new TraceView(true, autoscroll);
     m_tabWidget->addTab(m_liveView, "Live Trace");
     // Hide the close button of live view
@@ -37,9 +31,9 @@ MainWindow::MainWindow()
     setWindowTitle(tr("TraceTerminal++ - Live View"));
     setWindowIcon(QIcon(":/img/favicon.png"));
     setMinimumSize(160, 160);
-    auto windowState = settings.value(MAINWINDOW_FULLSCREEN, 0).toInt();
+    auto windowState = settings.value(Config::MAINWINDOW_FULLSCREEN, 0).toInt();
     setWindowState((Qt::WindowStates)windowState);
-    auto geometry = settings.value(MAINWINDOW_GEOMETRY, QRect(540, 400, 650, 400)).toRect();
+    auto geometry = settings.value(Config::MAINWINDOW_GEOMETRY, QRect(540, 400, 650, 400)).toRect();
     setGeometry(geometry);
 
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::onTabCloseRequested);
@@ -53,15 +47,15 @@ MainWindow::MainWindow()
 ///
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    QSettings settings(CONFIG, QSettings::IniFormat);
-    settings.setValue(MAINWINDOW_FULLSCREEN, (int)windowState());
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::MAINWINDOW_FULLSCREEN, (int)windowState());
 
     // Do not save the geometry of maximized window
     if (windowState() != Qt::WindowMaximized)
     {
-        settings.setValue(MAINWINDOW_GEOMETRY, geometry());
+        settings.setValue(Config::MAINWINDOW_GEOMETRY, geometry());
     }
-    settings.setValue(TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
+    settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
     event->accept();
 }
 
