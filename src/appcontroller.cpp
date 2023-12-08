@@ -1,7 +1,7 @@
-#include "utils.h"
-#include "appcontroller.h"
-#include "udpserver.h"
-#include "traceview.h"
+#include "inc/appcontroller.h"
+#include "inc/udpserver.h"
+#include "inc/traceview.h"
+#include "inc/utils.h"
 #include <QSettings>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QThread>
@@ -23,7 +23,8 @@ AppController::AppController(UdpServer* server, TraceView* view)
 
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     auto addr = settings.value(Config::INTERFACE, QHostAddress(QHostAddress::Any).toString()).toString();
-    //auto port = settings.value(Config::PORT, 911).toInt();
+    // Connecting port must be modified by user before starting the application
+    auto port = settings.value(Config::PORT, 911).toInt();
     m_server->initSocket(QHostAddress(addr), port);
 }
 
@@ -82,7 +83,6 @@ void AppController::onNewDataReady(QStringList data)
 ///
 void AppController::sendDataToView(QStringList& data)
 {
-    QMutexLocker locker(&m_mutex);
     auto length = data.length();
     for (auto i = 0; i < length; i += 3)
     {

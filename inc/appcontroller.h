@@ -33,7 +33,7 @@ private:
     TraceView* m_liveview{ nullptr };
     bool m_lastBindSuccess{true};
 
-    QMutex m_mutex;
+    //QMutex m_mutex;
 };
 
 #endif // APPCONTROLLER_H

@@ -43,7 +43,6 @@ private:
     QAction *saveAct;
     QAction *clearAct;
     QAction *clearUntilHereAct;
-
     QAction *setAutoScrollAct;
 
     QAction *setAnyItfAct;

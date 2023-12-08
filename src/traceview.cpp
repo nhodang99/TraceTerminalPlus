@@ -1,11 +1,13 @@
+#include "inc/traceview.h"
 #include <QtWidgets>
-#include "traceview.h"
 
 TraceView::TraceView(bool live, bool autoscroll)
     : m_liveview(live)
     , m_autoScroll(autoscroll)
 {
     setLineWrapMode(QTextEdit::NoWrap);
+    //setStyleSheet("text-indent:20");
+    setStyleSheet("white-space:pre-wrap");
     setAcceptRichText(true);
     setReadOnly(true);
     QFont font("Helvetica");
@@ -304,7 +306,7 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
     }
     else
     {
-        // If bind fail, don't active any option
+        // If bind fail, don't active the old option too
         if (m_lastSetItfAct != nullptr)
         {
             m_lastSetItfAct->setIconVisibleInMenu(false);

@@ -1,7 +1,7 @@
+#include "inc/mainwindow.h"
+#include "inc/utils.h"
 #include <QtWidgets>
 #include <QSettings>
-#include "mainwindow.h"
-#include "utils.h"
 
 MainWindow::MainWindow()
     : QMainWindow()
@@ -12,7 +12,6 @@ MainWindow::MainWindow()
     m_tabWidget = new QTabWidget;
     m_tabWidget->setTabsClosable(true);
     setCentralWidget(m_tabWidget);
-    
     // Live traceview
     auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
     m_liveView = new TraceView(true, autoscroll);
@@ -30,14 +29,13 @@ MainWindow::MainWindow()
     // Init the main window property
     setWindowTitle(tr("TraceTerminal++ - Live View"));
     setWindowIcon(QIcon(":/img/favicon.png"));
-    setMinimumSize(160, 160);
-    auto windowState = settings.value(Config::MAINWINDOW_FULLSCREEN, 0).toInt();
-    setWindowState((Qt::WindowStates)windowState);
-    auto geometry = settings.value(Config::MAINWINDOW_GEOMETRY, QRect(540, 400, 650, 400)).toRect();
-    setGeometry(geometry);
+    setMinimumSize(480, 360);
+    restoreGeometry(settings.value(Config::MAINWINDOW_GEOMETRY).toByteArray());
 
-    connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::onTabCloseRequested);
-    connect(m_tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onCurrentTabChanged);        
+    connect(m_tabWidget, &QTabWidget::tabCloseRequested,
+            this, &MainWindow::onTabCloseRequested);
+    connect(m_tabWidget, &QTabWidget::currentChanged,
+            this, &MainWindow::onCurrentTabChanged);
     connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
 }
 
@@ -48,13 +46,7 @@ MainWindow::MainWindow()
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    settings.setValue(Config::MAINWINDOW_FULLSCREEN, (int)windowState());
-
-    // Do not save the geometry of maximized window
-    if (windowState() != Qt::WindowMaximized)
-    {
-        settings.setValue(Config::MAINWINDOW_GEOMETRY, geometry());
-    }
+    settings.setValue(Config::MAINWINDOW_GEOMETRY, saveGeometry());
     settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
     event->accept();
 }
@@ -94,7 +86,7 @@ void MainWindow::open()
     if (filename.isEmpty())
         return;
 
-    // Only one selected file allowed
+    // Only one selected allowed
     QFileInfo fileInfo(filename[0]);
     for (auto i = 1; i < m_tabWidget->count(); ++i) // exclude default view
     {
@@ -153,7 +145,7 @@ void MainWindow::onCopyAvailable(bool a)
 
 void MainWindow::clear()
 {
-    //m_liveView->clear();
+    m_liveView->clear();
 }
 
 void MainWindow::about()

@@ -1,7 +1,5 @@
-#include "utils.h"
+#include "inc/utils.h"
 #include <QFileInfo>
-#include <QDir>
-#include <QProcess>
 #include <QDebug>
 
 namespace
@@ -37,5 +35,6 @@ void processLine(QString& line)
     {
         tag = traceTag;
     }
-    line = tag + line + endTag;
+    line = QString("%1%2%3").arg(tag, line, endTag);
+    qDebug() << line;
 }

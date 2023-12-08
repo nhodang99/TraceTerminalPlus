@@ -1,8 +1,8 @@
-#include "udpserver.h"
+#include "inc/udpserver.h"
+#include "inc/utils.h"
 #include <QNetworkDatagram>
 #include <qDebug>
 #include <QtConcurrent/QtConcurrentRun>
-#include "utils.h"
 
 UdpServer::UdpServer()
 {
@@ -21,10 +21,11 @@ UdpServer::~UdpServer()
 /// \param hostAddr
 /// \param port
 ///
-void UdpServer::initSocket(QHostAddress hostAddr)
+void UdpServer::initSocket(QHostAddress hostAddr, int port)
 {
     m_udpSocket = new QUdpSocket(this);
-    bool success = m_udpSocket->bind(hostAddr, PORT, QAbstractSocket::DontShareAddress);
+    m_port = port; // save for setHost function only
+    bool success = m_udpSocket->bind(hostAddr, port, QAbstractSocket::DontShareAddress);
     emit bindResult(hostAddr, success);
 
     connect(m_udpSocket, &QUdpSocket::readyRead,
@@ -38,7 +39,7 @@ void UdpServer::initSocket(QHostAddress hostAddr)
 void UdpServer::setHost(QHostAddress& hostAddr)
 {
     m_udpSocket->close();
-    bool success = m_udpSocket->bind(hostAddr, PORT, QAbstractSocket::DontShareAddress);
+    bool success = m_udpSocket->bind(hostAddr, m_port, QAbstractSocket::DontShareAddress);
     emit bindResult(hostAddr, success);
 }
 
@@ -76,7 +77,7 @@ void UdpServer::processRawData(const QByteArray& raw)
         m_remainingData.clear();
     }
 
-    // Remove the last \r\n, it introduces a new blank line after inserts text
+    // Remove the last \r\n, it introduces a new blank line after apppending text
     if (data.endsWith("\r\n"))
     {
         data = data.left(data.length() - 2);
@@ -92,10 +93,9 @@ void UdpServer::processRawData(const QByteArray& raw)
     auto textList = data.split("\r\n");
     for (auto& text : textList)
     {
-        //qDebug() << text;
-        //qDebug() << "-----------------";
+//        qDebug() << text;
+//        qDebug() << "-----------------";
         processLine(text);
     }
-
     emit newDataReady(textList);
 }

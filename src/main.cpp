@@ -1,7 +1,6 @@
-#include "mainwindow.h"
-#include "udpserver.h"
-#include "appcontroller.h"
-
+#include "inc/mainwindow.h"
+#include "inc/udpserver.h"
+#include "inc/appcontroller.h"
 #include <QApplication>
 #include <QAbstractSocket>
 
