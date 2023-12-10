@@ -8,7 +8,7 @@ TraceTerminal++ will catch every data sent to its connected interface address vi
 
 This tool is inspired by TraceTerminal, a tool written purely in C++ and WindowsAPI, but with more features: the ability to save the file to html (to keep the highlight colors), import files and search in file.
 
-This is also a side project for me to practice how to build an app from scratch.
+This is a side project for me to practice how to build an app from scratch.
 
 ## What was done
 - Catch traces 'quite' smoothly
