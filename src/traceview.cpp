@@ -1,5 +1,6 @@
 #include "inc/traceview.h"
 #include <QtWidgets>
+#include <QDialog>
 
 TraceView::TraceView(bool live, bool autoscroll)
     : m_liveview(live)
@@ -32,6 +33,9 @@ void TraceView::contextMenuEvent(QContextMenuEvent *event)
     menu->addAction(setLocalItfAct);
     menu->addAction(setRemoteItfAct);
     menu->addAction(setSerialItfAct);
+    menu->addSeparator();
+    menu->addAction(setPortAct);
+
     menu->exec(event->globalPos());
     delete menu;
 }
@@ -82,6 +86,11 @@ void TraceView::createActions()
     setAutoScrollAct->setIconVisibleInMenu(m_autoScroll);
     connect(setAutoScrollAct, &QAction::triggered, this, &TraceView::toggleAutoScroll);
 
+    setPortAct = new QAction(tr("&Set Port"), this);
+    setPortAct->setStatusTip(tr("Set port to connect to UDP connection"));
+    setPortAct->setEnabled(m_liveview);
+    connect(setPortAct, &QAction::triggered, this, &TraceView::setPort);
+
     createSetHostActions();
 }
 
@@ -95,7 +104,7 @@ void TraceView::createSetHostActions()
     setAnyItfAct->setIcon(QIcon(":/img/checkmark.png"));
     setAnyItfAct->setEnabled(m_liveview);
     connect(setAnyItfAct, &QAction::triggered, this, [=](){
-        setInterface(setAnyItfAct);
+        setHost(setAnyItfAct);
     });
 
     setAnyItfIpv6Act = new QAction(tr("&Any interface IPv6"), this);
@@ -103,7 +112,7 @@ void TraceView::createSetHostActions()
     setAnyItfIpv6Act->setIcon(QIcon(":/img/checkmark.png"));
     setAnyItfIpv6Act->setEnabled(m_liveview);
     connect(setAnyItfIpv6Act, &QAction::triggered, this, [=](){
-        setInterface(setAnyItfIpv6Act);
+        setHost(setAnyItfIpv6Act);
     });
 
     setLocalItfAct = new QAction(tr("&Local interface"), this);
@@ -111,7 +120,7 @@ void TraceView::createSetHostActions()
     setLocalItfAct->setIcon(QIcon(":/img/checkmark.png"));
     setLocalItfAct->setEnabled(m_liveview);
     connect(setLocalItfAct, &QAction::triggered, this, [=](){
-        setInterface(setLocalItfAct);
+        setHost(setLocalItfAct);
     });
 
     //@todo: How to get the remote interface and serial interface
@@ -160,18 +169,32 @@ QHostAddress TraceView::hostAddressFromAction(QAction* act) const
         { setAnyItfIpv6Act, QHostAddress::AnyIPv6 },
         { setLocalItfAct,   QHostAddress::LocalHost }
     };
-
     return hostMap[act];
 }
 
-void TraceView::setInterface(QAction* act)
+void TraceView::setHost(QAction* act)
 {
     if (act == nullptr || !m_liveview)
     {
         return;
     }
     auto addr = hostAddressFromAction(act);
-    emit changeInterface(addr);
+    emit changeHost(addr);
+}
+
+///
+/// \brief TraceView::setPort
+///
+void TraceView::setPort()
+{
+    bool ok;
+    int port = QInputDialog::getInt(this, tr("Set port"),
+                                    tr("Port number (1 - 65535)"),
+                                    m_currentPort, 1, 65535, 1, &ok);
+    if (ok)
+    {
+        emit changePort(port);
+    }
 }
 
 ///
@@ -280,7 +303,7 @@ void TraceView::onNewDataReady(QString data)
 /// \brief TraceView::onSocketBindResult
 /// \param success
 ///
-void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
+void TraceView::onSocketBindResult(QHostAddress addr, quint16 port, bool success)
 {
     if (!m_liveview)
     {
@@ -290,8 +313,8 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
     QString msg;
     if (success)
     {
-        qDebug() << itf;
-        auto act = actionFromHostAddress(itf);
+        qDebug() << addr;
+        auto act = actionFromHostAddress(addr);
         if (act == nullptr)
             return;
 
@@ -301,8 +324,9 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
         }
         act->setIconVisibleInMenu(true);
         m_lastSetItfAct = act;
-
-        msg = "<font color=Black>Binding to " + itf.toString() + ":911 interface OK</font>";
+        m_currentPort = port;
+        msg = QString("<font color=Black>Binding to %1:%2 interface OK</font>")
+                  .arg(addr.toString(), QString::number(port));
     }
     else
     {
@@ -312,7 +336,8 @@ void TraceView::onSocketBindResult(QHostAddress& itf, bool success)
             m_lastSetItfAct->setIconVisibleInMenu(false);
         }
 
-        msg = "<font color=Red>Binding to " + itf.toString() + ":911 interface failed. ";
+        msg = QString("<font color=Red>Binding to %1:%2 interface failed. ")
+                  .arg(addr.toString(), QString::number(port));
         msg += "Please check if other application is taking over the address.";
         msg += "</font>";
     }

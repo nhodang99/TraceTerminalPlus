@@ -9,16 +9,18 @@ MainWindow::MainWindow()
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
 
     // Main tab widget
-    m_tabWidget = new QTabWidget;
+    m_tabWidget = new QTabWidget(this);
     m_tabWidget->setTabsClosable(true);
     setCentralWidget(m_tabWidget);
+
     // Live traceview
     auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
     m_liveView = new TraceView(true, autoscroll);
     m_tabWidget->addTab(m_liveView, "Live Trace");
     // Hide the close button of live view
-    // @todo: set LeftSise program crash, how to detect icon position?
+    // @todo: How to detect icon position?
     m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->hide();
+
     // Create app's menus and actions
     createActions();
     createMenus();
@@ -203,6 +205,8 @@ void MainWindow::createMenus()
     editMenu->addAction(copyAct);
     editMenu->addSeparator();
     editMenu->addAction(clearAct);
+
+    //editMenu = menuBar()->addMenu(tr("&Setting"));
 
     helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAct);

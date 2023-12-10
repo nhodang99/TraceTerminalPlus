@@ -3,10 +3,14 @@
 #include <QNetworkDatagram>
 #include <qDebug>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QSettings>
 
 UdpServer::UdpServer()
 {
     m_remainingData.clear();
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    m_host = settings.value(Config::HOST, QHostAddress(QHostAddress::Any).toString()).toString();
+    m_port = settings.value(Config::PORT, 911).toInt();
 }
 
 UdpServer::~UdpServer()
@@ -14,6 +18,10 @@ UdpServer::~UdpServer()
     m_udpSocket->close();
     delete m_udpSocket;
     m_udpSocket = nullptr;
+
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::HOST, m_host.toString());
+    settings.setValue(Config::PORT, m_port);
 }
 
 ///
@@ -21,26 +29,56 @@ UdpServer::~UdpServer()
 /// \param hostAddr
 /// \param port
 ///
-void UdpServer::initSocket(QHostAddress hostAddr, int port)
+void UdpServer::initSocket()
 {
     m_udpSocket = new QUdpSocket(this);
-    m_port = port; // save for setHost function only
-    bool success = m_udpSocket->bind(hostAddr, port, QAbstractSocket::DontShareAddress);
-    emit bindResult(hostAddr, success);
+    m_lastBindSuccess = m_udpSocket->bind(m_host, m_port, QAbstractSocket::DontShareAddress);
+    emit bindResult(m_host, m_port, m_lastBindSuccess);
 
     connect(m_udpSocket, &QUdpSocket::readyRead,
             this, &UdpServer::onReadyRead);
 }
 
 ///
+/// \brief UdpServer::onHostChangeRequested
+/// \param host
+///
+void UdpServer::onHostChangeRequested(QHostAddress host)
+{
+    if (m_host == host && m_lastBindSuccess)
+    {
+        return;
+    }
+    setInterface(host, m_port);
+}
+
+///
+/// \brief UdpServer::onPortChangeRequested
+/// \param port
+///
+void UdpServer::onPortChangeRequested(quint16 port)
+{
+    if (m_port == port && m_lastBindSuccess)
+    {
+        return;
+    }
+    setInterface(m_host, port);
+}
+
+///
 /// \brief Set host address to listen to
 /// \param host: host address (local, remote IPv4,..)
 ///
-void UdpServer::setHost(QHostAddress& hostAddr)
+void UdpServer::setInterface(QHostAddress& hostAddr, quint16 port)
 {
     m_udpSocket->close();
-    bool success = m_udpSocket->bind(hostAddr, m_port, QAbstractSocket::DontShareAddress);
-    emit bindResult(hostAddr, success);
+    m_lastBindSuccess = m_udpSocket->bind(hostAddr, port, QAbstractSocket::DontShareAddress);
+    if (m_lastBindSuccess)
+    {
+        m_host = hostAddr;
+        m_port = port;
+    }
+    emit bindResult(hostAddr, port, m_lastBindSuccess);
 }
 
 ///
@@ -57,8 +95,10 @@ void UdpServer::onReadyRead()
 }
 
 ///
-/// \brief UdpServer::processRawData
-/// \param data
+/// \brief Send data to view block by block
+/// \note The usleep function on Windows is rounded up to 1ms, so if emit line by line
+/// the scroll speed is very slow. Instead send the block of 3 lines.
+/// \param raw
 ///
 void UdpServer::processRawData(const QByteArray& raw)
 {
@@ -97,5 +137,22 @@ void UdpServer::processRawData(const QByteArray& raw)
 //        qDebug() << "-----------------";
         processLine(text);
     }
-    emit newDataReady(textList);
+
+    // TEST
+    auto length = textList.length();
+    for (auto i = 0; i < length; i += 3)
+    {
+        auto textBlock = textList.at(i);
+        if (i + 1 < length)
+        {
+            textBlock += "<br>" + textList.at(i + 1);
+            if (i + 2 < length)
+            {
+                textBlock += "<br>" + textList.at(i + 2);
+            }
+        }
+        emit newDataReady(textBlock);
+        // On windows, QThread::usleep is rounded up to 1ms anyway...
+        QThread::msleep(1);
+    }
 }

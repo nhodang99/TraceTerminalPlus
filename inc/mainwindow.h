@@ -41,6 +41,7 @@ private:
     //! [Actions]
     QMenu *fileMenu;
     QMenu *editMenu;
+    QMenu *settingMenu;
     QMenu *helpMenu;
     QAction *openAct;
     QAction *saveAct;

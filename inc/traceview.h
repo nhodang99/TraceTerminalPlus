@@ -3,7 +3,6 @@
 
 #include <QTextEdit>
 #include <QHostAddress>
-#include <QMutex>
 
 class TraceView : public QTextEdit
 {
@@ -13,7 +12,7 @@ public:
     TraceView(bool live = false, bool autoscroll = false);
 
     bool isAutoscroll() const { return m_autoScroll; }
-    void onSocketBindResult(QHostAddress&, bool);
+    void onSocketBindResult(QHostAddress, quint16, bool);
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
@@ -25,12 +24,14 @@ public slots:
     void clearUntilHere();
     void toggleAutoScroll();
 
-    void setInterface(QAction*);
+    void setHost(QAction*);
+    void setPort();
     void setIncompletedFunction();
     void onNewDataReady(QString);
 
 signals:
-    void changeInterface(QHostAddress);
+    void changeHost(QHostAddress);
+    void changePort(quint16);
 
 private:
     void createActions();
@@ -50,13 +51,15 @@ private:
     QAction *setLocalItfAct;
     QAction *setRemoteItfAct;
     QAction *setSerialItfAct;
+    QAction *setPortAct;
     //! [Actions]
 
     //! [Attr]
-    QAction* m_lastSetItfAct{ nullptr };
-    bool m_liveview{ false };
-    bool m_autoScroll{ false };
+    QAction*    m_lastSetItfAct{ nullptr };
+    bool        m_liveview{ false };
+    bool        m_autoScroll{ false };
     QTextCursor m_clearUntilCursor;
+    quint16     m_currentPort {911}; // for context menu
 };
 
 #endif // TRACEVIEW_H

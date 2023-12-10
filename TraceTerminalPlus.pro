@@ -11,14 +11,12 @@ CONFIG += c++17
 SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
-    src/appcontroller.cpp \
     src/traceview.cpp \
     src/udpserver.cpp \
     src/utils.cpp
 
 HEADERS += \
     inc/mainwindow.h \
-    inc/appcontroller.h \
     inc/traceview.h \
     inc/udpserver.h \
     inc/utils.h

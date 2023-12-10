@@ -1,6 +1,5 @@
 #include "inc/mainwindow.h"
 #include "inc/udpserver.h"
-#include "inc/appcontroller.h"
 #include <QApplication>
 #include <QAbstractSocket>
 
@@ -15,9 +14,19 @@ int main(int argc, char *argv[])
     app.setAttribute(Qt::AA_DontShowIconsInMenus);
     qRegisterMetaType<QHostAddress>("QHostAddress");
 
+    UdpServer server;
     MainWindow mainWindow;
-    AppController appController(new UdpServer(), mainWindow.getLiveView());
 
+    QObject::connect(mainWindow.getLiveView(), &TraceView::changeHost,
+                     &server, &UdpServer::onHostChangeRequested, Qt::QueuedConnection);
+    QObject::connect(mainWindow.getLiveView(), &TraceView::changePort,
+                     &server, &UdpServer::onPortChangeRequested, Qt::QueuedConnection);
+    QObject::connect(&server, &UdpServer::bindResult,
+                     mainWindow.getLiveView(), &TraceView::onSocketBindResult, Qt::QueuedConnection);
+    QObject::connect(&server, &UdpServer::newDataReady,
+                     mainWindow.getLiveView(), &TraceView::onNewDataReady, Qt::QueuedConnection);
+
+    server.initSocket();
     mainWindow.show();
     return app.exec();
 }
