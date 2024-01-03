@@ -1,13 +1,11 @@
 #include "inc/udpserver.h"
-#include "inc/utils.h"
+#include "inc/constants.h"
 #include <QNetworkDatagram>
 #include <qDebug>
-#include <QtConcurrent/QtConcurrentRun>
 #include <QSettings>
 
 UdpServer::UdpServer()
 {
-    m_remainingData.clear();
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     m_host = settings.value(Config::HOST, QHostAddress(QHostAddress::Any).toString()).toString();
     m_port = settings.value(Config::PORT, 911).toInt();
@@ -82,77 +80,14 @@ void UdpServer::setInterface(QHostAddress& hostAddr, quint16 port)
 }
 
 ///
-/// \brief slot to receive the datagram and send it to controller
+/// \brief slot to receive the datagram and send it to trace manager
 ///
 void UdpServer::onReadyRead()
 {
     while (m_udpSocket->hasPendingDatagrams())
     {
-        QNetworkDatagram datagram = m_udpSocket->receiveDatagram();
-        // Process incoming data in another thread
-        QtConcurrent::run(this, &UdpServer::processRawData, datagram.data());
-    }
-}
-
-///
-/// \brief Send data to view block by block
-/// \note The usleep function on Windows is rounded up to 1ms, so if emit line by line
-/// the scroll speed is very slow. Instead send the block of 3 lines.
-/// \param raw
-///
-void UdpServer::processRawData(const QByteArray& raw)
-{
-    QMutexLocker locker(&m_mutex);
-    if (raw.isEmpty())
-    {
-        qDebug() << "Empty data";
-        return;
-    }
-    auto data = QString(raw);
-    // Last incoming data is not always a complete sentence
-    // Save the incompleted data and prepend it to the new data if has
-    if (!m_remainingData.isEmpty())
-    {
-        data = m_remainingData + data;
-        m_remainingData.clear();
-    }
-
-    // Remove the last \r\n, it introduces a new blank line after apppending text
-    if (data.endsWith("\r\n"))
-    {
-        data = data.left(data.length() - 2);
-    }
-    else
-    {
-        auto idx = data.lastIndexOf("\r\n");
-        m_remainingData = data.right(data.length() - (idx + 1) - 1);
-        data = data.left(idx);
-    }
-
-    // Make every single line rich text
-    auto textList = data.split("\r\n");
-    for (auto& text : textList)
-    {
-//        qDebug() << text;
-//        qDebug() << "-----------------";
-        processLine(text);
-    }
-
-    // TEST
-    auto length = textList.length();
-    for (auto i = 0; i < length; i += 3)
-    {
-        auto textBlock = textList.at(i);
-        if (i + 1 < length)
-        {
-            textBlock += "<br>" + textList.at(i + 1);
-            if (i + 2 < length)
-            {
-                textBlock += "<br>" + textList.at(i + 2);
-            }
-        }
-        emit newDataReady(textBlock);
-        // On windows, QThread::usleep is rounded up to 1ms anyway...
-        QThread::msleep(1);
+        auto datagram = m_udpSocket->receiveDatagram();
+        auto raw = datagram.data();
+        emit newDataReady(raw);
     }
 }

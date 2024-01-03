@@ -23,11 +23,12 @@ public slots:
     void clear();
     void clearUntilHere();
     void toggleAutoScroll();
+    void setCustomHiglights();
 
     void setHost(QAction*);
     void setPort();
     void setIncompletedFunction();
-    void onNewDataReady(QString);
+    void onNewTraceReady();
 
 signals:
     void changeHost(QHostAddress);
@@ -41,17 +42,19 @@ private:
     QHostAddress hostAddressFromAction(QAction*) const;
 
     //! [Actions]
-    QAction *saveAct;
-    QAction *clearAct;
-    QAction *clearUntilHereAct;
-    QAction *setAutoScrollAct;
+    QAction* m_saveAct;
+    QAction* m_searchAct;
+    QAction* m_clearAct;
+    QAction* m_clearUntilHereAct;
+    QAction* m_setAutoScrollAct;
+    QAction* m_setCustomHighlightAct;
 
-    QAction *setAnyItfAct;
-    QAction *setAnyItfIpv6Act;
-    QAction *setLocalItfAct;
-    QAction *setRemoteItfAct;
-    QAction *setSerialItfAct;
-    QAction *setPortAct;
+    QAction* m_setAnyItfAct;
+    QAction* m_setAnyItfIpv6Act;
+    QAction* m_setLocalItfAct;
+    QAction* m_setRemoteItfAct;
+    QAction* m_setSerialItfAct;
+    QAction* m_setPortAct;
     //! [Actions]
 
     //! [Attr]
@@ -59,7 +62,7 @@ private:
     bool        m_liveview{ false };
     bool        m_autoScroll{ false };
     QTextCursor m_clearUntilCursor;
-    quint16     m_currentPort {911}; // for context menu
+    quint16     m_currentPort{911}; // for context menu
 };
 
 #endif // TRACEVIEW_H

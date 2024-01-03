@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 10.0.1, 2023-12-10T19:01:45. -->
+<!-- Written by QtCreator 10.0.1, 2024-01-03T17:39:34. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -137,8 +137,8 @@
     <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">2</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">E:\TraceTerminalPlus\TraceTerminalPlus\build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Release</value>
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">E:/TraceTerminalPlus/TraceTerminalPlus/build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Release</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">E:\TraceTerminalPlus\build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Release</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">E:/TraceTerminalPlus/build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Release</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
@@ -246,7 +246,8 @@
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebugger">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">false</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">E:/TraceTerminalPlus/build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Debug</value>
+    <value type="bool" key="RunConfiguration.UseTerminal">false</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">E:/TraceTerminalPlus/build-TraceTerminalPlus-Desktop_Qt_5_12_12_MinGW_64_bit-Release</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>

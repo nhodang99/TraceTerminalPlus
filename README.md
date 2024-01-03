@@ -14,9 +14,10 @@ This is a side project for me to practice how to build an app from scratch.
 - Catch traces 'quite' smoothly
 - Connect to any inteface, any IPv6 host only, localhost only
 - Open and convert txt file, save file
-
-## To do list
-- Disable autoscroll is not working if at the end of the view (only when at the end)
 - Custom highlights
-- Searching
+- Searching in file
+
+## Todo list
+- Handle trace managing better
+- Need to restructure some part of the code
 - Connect to remote host only, serial host only

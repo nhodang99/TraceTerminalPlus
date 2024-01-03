@@ -2,7 +2,6 @@
 #define UDPSERVER_H
 
 #include <QUdpSocket>
-#include <QMutex>
 
 class UdpServer : public QUdpSocket
 {
@@ -20,19 +19,14 @@ private slots:
     void onReadyRead();
 
 signals:
-    //void newDataReady(QStringList);
     void bindResult(QHostAddress, quint16, bool);
-    void newDataReady(QString);
+    void newDataReady(QByteArray);
 
 private:
-    void processRawData(const QByteArray&);
-
     QUdpSocket* m_udpSocket{ nullptr };
-    QString     m_remainingData; // Save the incompleted data that do not form a sentence
-    QMutex      m_mutex;
 
-    QHostAddress m_host{ QHostAddress::Any }; // @todo: where to save these value?
-    quint16      m_port{ 911 };               //        controller or server?
+    QHostAddress m_host{ QHostAddress::Any };
+    quint16      m_port{ 911 };
     bool         m_lastBindSuccess{true};
 };
 
