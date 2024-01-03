@@ -4,7 +4,7 @@ A tool written in Qt to help tracing and debugging for applications via UDP conn
 ## Description
 TraceTerminal++ is a debugging utility that serves greatly for debugging embedded applications, which are difficult to do debug directly on computer.
 
-TraceTerminal++ will catch every data sent to its connected interface address via UDP protocol (any host, any IPv6 host, local host,...). The embedded app will need a feature to send traces (debugging messages) over UDP to use this tool. The traces with special keywords in-line will be highlight with special color for easy debugging ability (" WARNG - ", " ERROR - ",... and some custom highlights).
+TraceTerminal++ is a live-logging viewer, it catches every data sent to its connected interface address via UDP protocol (any host, any IPv6 host, local host,...). The embedded app will need a feature to send traces (logging/debugging messages) over UDP to use this tool. The traces with special keywords in-line will be highlight with special color for easy debugging ability (" WARNG - ", " ERROR - ",... and some custom highlights).
 
 This tool is inspired by TraceTerminal, a tool written purely in C++ and WindowsAPI, but with more features: the ability to save the file to html (to keep the highlight colors), import files and search in file.
 
