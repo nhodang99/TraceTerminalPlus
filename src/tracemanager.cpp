@@ -3,7 +3,6 @@
 #include <QSettings>
 #include <QFileInfo>
 #include <QDebug>
-#include <QtConcurrent/QtConcurrentRun>
 
 TraceManager::TraceManager()
 {
@@ -18,12 +17,6 @@ TraceManager::TraceManager()
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     auto customs = settings.value(Config::CUSTOMS, QStringList()).toStringList();
     setCustoms(customs);
-}
-
-TraceManager::~TraceManager()
-{
-    // Do not delete the memory, it is managed in MainWindow
-    m_view = nullptr;
 }
 
 ///
@@ -63,7 +56,8 @@ void TraceManager::setCustoms(QStringList& list)
 void TraceManager::onNewDataReady(QByteArray raw)
 {
     auto data = QString(raw);
-    QtConcurrent::run(this, &TraceManager::processAndSendTraceToView, data);
+//    QtConcurrent::run(this, &TraceManager::processAndSendTraceToView, data);
+    processAndSendTraceToView(data);
 }
 
 ///
@@ -137,6 +131,11 @@ void TraceManager::filterIncompletedFromData(QString& data)
             m_pendingData = data.right(length - (idx + 1) - 1);
             data = data.left(idx);
         }
+        else
+        {
+            m_pendingData = data;
+            data.clear();
+        }
     }
 //    qDebug() << "Return   :" << data;
 //    qDebug() << "Remaining:" << m_pendingData;
@@ -149,22 +148,23 @@ void TraceManager::filterIncompletedFromData(QString& data)
 ///
 void TraceManager::processAndSendTraceToView(QString& data)
 {
-    QMutexLocker locker(&m_mutex);
+//    QMutexLocker locker(&m_mutex);
     if (data.isEmpty())
     {
         return;
     }
+
+    qDebug() << data;
+    qDebug() << "---------------------";
     filterIncompletedFromData(data);
+    if (data.isEmpty())
+    {
+        return;
+    }
     auto traces = data.split("\r\n");
     for (auto& trace : traces)
     {
         processTraceLine(trace);
-//        qDebug() << trace;
-        // Calling slot append from a non-gui thread
-        // It helps the UI not blocked: when text being appended user can still interract with the UI
-        // Also, append line by line help us using blockNumber() to get the number of a line
-        QMetaObject::invokeMethod(m_view, "append",
-                                  Qt::QueuedConnection, Q_ARG(QString, trace));
     }
-    QMetaObject::invokeMethod(m_view, "onNewTraceReady", Qt::QueuedConnection);
+    emit newTracesReady(traces);
 }

@@ -7,19 +7,29 @@
 UdpServer::UdpServer()
 {
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    m_host = settings.value(Config::HOST, QHostAddress(QHostAddress::Any).toString()).toString();
-    m_port = settings.value(Config::PORT, 911).toInt();
+    m_host = settings.value(Config::CONNECTED_HOST, QHostAddress(QHostAddress::Any).toString()).toString();
+    m_port = settings.value(Config::CONNECTED_PORT, 911).toInt();
 }
 
 UdpServer::~UdpServer()
 {
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::CONNECTED_HOST, m_host.toString());
+    settings.setValue(Config::CONNECTED_PORT, m_port);
+
     m_udpSocket->close();
     delete m_udpSocket;
     m_udpSocket = nullptr;
+}
 
-    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    settings.setValue(Config::HOST, m_host.toString());
-    settings.setValue(Config::PORT, m_port);
+///
+/// \brief UdpServer::instance
+/// \return
+///
+UdpServer& UdpServer::instance()
+{
+    static UdpServer unique;
+    return unique;
 }
 
 ///
@@ -47,7 +57,8 @@ void UdpServer::onHostChangeRequested(QHostAddress host)
     {
         return;
     }
-    setInterface(host, m_port);
+    m_host = host;
+    reinitSocket();
 }
 
 ///
@@ -60,23 +71,19 @@ void UdpServer::onPortChangeRequested(quint16 port)
     {
         return;
     }
-    setInterface(m_host, port);
+    m_port = port;
+    reinitSocket();
 }
 
 ///
-/// \brief Set host address to listen to
-/// \param host: host address (local, remote IPv4,..)
+/// \brief UdpServer::reinitSocket
 ///
-void UdpServer::setInterface(QHostAddress& hostAddr, quint16 port)
+void UdpServer::reinitSocket()
 {
     m_udpSocket->close();
-    m_lastBindSuccess = m_udpSocket->bind(hostAddr, port, QAbstractSocket::DontShareAddress);
-    if (m_lastBindSuccess)
-    {
-        m_host = hostAddr;
-        m_port = port;
-    }
-    emit bindResult(hostAddr, port, m_lastBindSuccess);
+    auto success = m_udpSocket->bind(m_host, m_port, QAbstractSocket::DontShareAddress);
+    emit bindResult(m_host, m_port, success);
+    m_lastBindSuccess = success;
 }
 
 ///

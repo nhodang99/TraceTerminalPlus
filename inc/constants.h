@@ -8,8 +8,9 @@
 namespace Config
 {
 const QString CONFIG_DIR            = QStringLiteral("./TraceTerminalPlus.ini");
-const QString HOST                  = QStringLiteral("udpSocket/host");
-const QString PORT                  = QStringLiteral("udpSocket/port");
+const QString CONNECTED_HOST        = QStringLiteral("udpSocket/host");
+const QString CONNECTED_PORT        = QStringLiteral("udpSocket/port");
+const QString SPECIFIC_HOST         = QStringLiteral("udpSocket/specificHost");
 const QString TRACEVIEW_AUTOSCROLL  = QStringLiteral("traceview/autoscroll");
 const QString MAINWINDOW_GEOMETRY   = QStringLiteral("mainwindow/geometry");
 const QString SEARCH_CASESENSITIVE  = QStringLiteral("search/caseSensitive");

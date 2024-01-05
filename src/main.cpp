@@ -14,14 +14,13 @@ int main(int argc, char *argv[])
     app.setAttribute(Qt::AA_DontShowIconsInMenus);
     qRegisterMetaType<QHostAddress>("QHostAddress");
 
-    UdpServer server;
-    MainWindow mainWindow;
+    UdpServer& server = UdpServer::instance();
     TraceManager& traceMgr = TraceManager::instance();
+    MainWindow mainWindow;
 
     // Connect server to trace view
     QObject::connect(&server, &UdpServer::bindResult,
                      mainWindow.getLiveView(), &TraceView::onSocketBindResult, Qt::QueuedConnection);
-
     // Connect trace view to server
     QObject::connect(mainWindow.getLiveView(), &TraceView::changeHost,
                      &server, &UdpServer::onHostChangeRequested, Qt::QueuedConnection);
@@ -30,12 +29,12 @@ int main(int argc, char *argv[])
 
     // Connect server to trace manager
     QObject::connect(&server, &UdpServer::newDataReady,
-                     &traceMgr, &TraceManager::onNewDataReady, Qt::QueuedConnection);
+                     &traceMgr, &TraceManager::onNewDataReady);
+    // Connect manager to trace view
+    QObject::connect(&traceMgr, &TraceManager::newTracesReady,
+                     mainWindow.getLiveView(), &TraceView::onNewTracesReady, Qt::QueuedConnection);
 
     server.initSocket();
-    // Set view to manager like this can be bad,
-    // but we need it to perform append view from non-gui thread and keep sending data in order
-    traceMgr.setView(mainWindow.getLiveView());
     mainWindow.show();
     return app.exec();
 }

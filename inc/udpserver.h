@@ -7,11 +7,11 @@ class UdpServer : public QUdpSocket
 {
     Q_OBJECT
 public:
-    UdpServer();
     ~UdpServer();
+    static UdpServer& instance();
 
     void initSocket();
-    void setInterface(QHostAddress&, quint16);
+    void reinitSocket();
     void onHostChangeRequested(QHostAddress);
     void onPortChangeRequested(quint16);
 
@@ -23,10 +23,11 @@ signals:
     void newDataReady(QByteArray);
 
 private:
-    QUdpSocket* m_udpSocket{ nullptr };
+    UdpServer();
 
-    QHostAddress m_host{ QHostAddress::Any };
-    quint16      m_port{ 911 };
+    QUdpSocket*  m_udpSocket{nullptr};
+    QHostAddress m_host{QHostAddress::Any};
+    quint16      m_port{911};
     bool         m_lastBindSuccess{true};
 };
 

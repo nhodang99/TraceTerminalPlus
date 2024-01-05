@@ -16,7 +16,9 @@ MainWindow::MainWindow()
 
     // Live traceview
     auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
+    auto specificHostStr = settings.value(Config::SPECIFIC_HOST, QString("192.168.137.1")).toString();
     m_liveView = new TraceView(true, autoscroll);
+    m_liveView->setCurrentSpecificAddress(specificHostStr);
     m_tabWidget->addTab(m_liveView, "Live Trace");
     // Hide the close button of live view
     // @TODO: How to detect icon position?
@@ -33,12 +35,12 @@ MainWindow::MainWindow()
     createActions();
     createMenus();
 
-    QString message = tr("A context menu is available by right-clicking");
+    QString message = "A context menu is available by right-clicking";
     statusBar()->setStyleSheet("color: indigo");
     statusBar()->showMessage(message);
 
     // Init the main window property
-    setWindowTitle(tr("TraceTerminal++ - Live View"));
+    setWindowTitle("TraceTerminal++ - Live View");
     setWindowIcon(QIcon(":/img/favicon.ico"));
     setAcceptDrops(true);
     setMinimumSize(480, 360);
@@ -60,19 +62,19 @@ MainWindow::MainWindow()
 ///
 void MainWindow::createActions()
 {
-    m_openAct = new QAction(tr("&Open..."), this);
+    m_openAct = new QAction("Open...", this);
     m_openAct->setShortcuts(QKeySequence::Open);
-    m_openAct->setStatusTip(tr("Open an existing file"));
+    m_openAct->setStatusTip("Open an existing file");
     connect(m_openAct, &QAction::triggered, this, &MainWindow::open);
 
-    m_saveAct = new QAction(tr("&Save"), this);
+    m_saveAct = new QAction("Save", this);
     m_saveAct->setShortcuts(QKeySequence::Save);
-    m_saveAct->setStatusTip(tr("Save the document to disk"));
+    m_saveAct->setStatusTip("Save the document to disk");
     connect(m_saveAct, &QAction::triggered, this, &MainWindow::save);
 
-    m_searchAct = new QAction(tr("&Search..."), this);
+    m_searchAct = new QAction("Search...", this);
     m_searchAct->setShortcuts(QKeySequence::Find);
-    m_searchAct->setStatusTip(tr("Search in the document. Use shortcut Ctrl+F for normal search, Ctrl+Shift+F for advanced search."));
+    m_searchAct->setStatusTip("Search in the document. Use shortcut Ctrl+F for normal search, Ctrl+Shift+F for advanced search.");
     connect(m_searchAct, &QAction::triggered, this, [=](){
         this->showSearchDock();
     });
@@ -81,26 +83,26 @@ void MainWindow::createActions()
         this->showSearchDock(true);
     });
 
-    m_exitAct = new QAction(tr("&Exit"), this);
+    m_exitAct = new QAction("Exit", this);
     m_exitAct->setShortcuts(QKeySequence::Quit);
-    m_exitAct->setStatusTip(tr("Exit the application"));
+    m_exitAct->setStatusTip("Exit the application");
     connect(m_exitAct, &QAction::triggered, this, &QWidget::close);
 
-    m_copyAct = new QAction(tr("&Copy"), this);
+    m_copyAct = new QAction("Copy", this);
     m_copyAct->setShortcuts(QKeySequence::Copy);
-    m_copyAct->setStatusTip(tr("Copy the current selection's contents to the "
-                               "clipboard"));
+    m_copyAct->setStatusTip("Copy the current selection's contents to the "
+                               "clipboard");
     m_copyAct->setEnabled(false);
     connect(m_copyAct, &QAction::triggered, this, &MainWindow::copy);
     connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
 
-    m_clearAct = new QAction(tr("&Clear"), this);
+    m_clearAct = new QAction("Clear", this);
     m_clearAct->setShortcuts(QKeySequence::Refresh);
-    m_clearAct->setStatusTip(tr("Clear all the traces"));
+    m_clearAct->setStatusTip("Clear all the traces");
     connect(m_clearAct, &QAction::triggered, this, &MainWindow::clear);
 
-    m_aboutAct = new QAction(tr("&About"), this);
-    m_aboutAct->setStatusTip(tr("Show the application's About box"));
+    m_aboutAct = new QAction("About", this);
+    m_aboutAct->setStatusTip("Show the application's About box");
     connect(m_aboutAct, &QAction::triggered, this, &MainWindow::about);
 }
 
@@ -109,19 +111,19 @@ void MainWindow::createActions()
 ///
 void MainWindow::createMenus()
 {
-    m_fileMenu = menuBar()->addMenu(tr("&File"));
+    m_fileMenu = menuBar()->addMenu("File");
     m_fileMenu->addAction(m_openAct);
     m_fileMenu->addAction(m_saveAct);
     m_fileMenu->addAction(m_searchAct);
     m_fileMenu->addSeparator();
     m_fileMenu->addAction(m_exitAct);
 
-    m_editMenu = menuBar()->addMenu(tr("&Edit"));
+    m_editMenu = menuBar()->addMenu("Edit");
     m_editMenu->addAction(m_copyAct);
     m_editMenu->addSeparator();
     m_editMenu->addAction(m_clearAct);
 
-    m_helpMenu = menuBar()->addMenu(tr("&Help"));
+    m_helpMenu = menuBar()->addMenu("Help");
     m_helpMenu->addAction(m_aboutAct);
 }
 
@@ -134,6 +136,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     settings.setValue(Config::MAINWINDOW_GEOMETRY, saveGeometry());
     settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
+    settings.setValue(Config::SPECIFIC_HOST, m_liveView->getCurrentSpecificAddress());
     settings.setValue(Config::SEARCH_CASESENSITIVE, m_searchDock->isCaseSensitiveChecked());
     settings.setValue(Config::SEARCH_LOOPSEARCH, m_searchDock->isLoopSearchChecked());
     event->accept();
@@ -190,7 +193,7 @@ void MainWindow::onTabCloseRequested(int index)
 void MainWindow::onCurrentTabChanged(int index)
 {
     auto tabName = m_tabWidget->tabText(index);
-    setWindowTitle(tr("TraceTerminal++") + " - " + tabName);
+    setWindowTitle(QString("TraceTerminal++ - %1").arg(tabName));
 }
 
 ///
@@ -206,7 +209,7 @@ void MainWindow::onSearchDockHidden()
 ///
 void MainWindow::open()
 {
-    QFileDialog fileDialog(this, tr("TraceTerminal++ - Open"));
+    QFileDialog fileDialog(this, "TraceTerminal++ - Open");
     fileDialog.setNameFilter("Trace files (*.txt *.html)");
     if (!fileDialog.exec())
         return;
@@ -273,7 +276,7 @@ void MainWindow::openFile(QString& url)
         }
         offlineView->append(line);
         // Process event loop so that gui thread can be updated while appending the text still occuring
-        QApplication::processEvents();
+        QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
     }
     progress.setValue(100);
 }
@@ -343,7 +346,6 @@ void MainWindow::normalSearch(bool newSearch)
                                       isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
     if (foundCursor.isNull())
     {
-        statusBar()->setStyleSheet("color: indigo");
         // If loop search is not checked, keep the current word hightlight
         if (!isLoopSearch)
         {
@@ -407,7 +409,6 @@ void MainWindow::advancedSearch()
     {
         if (progress.wasCanceled())
         {
-            statusBar()->setStyleSheet("color: red");
             statusBar()->showMessage("Advanced search aborted.", 2000);
             break;
         }
@@ -426,7 +427,7 @@ void MainWindow::advancedSearch()
         m_searchDock->addAdvSearchResult(resText, currentCursor);
         prevCursor = currentCursor;
         // Process event loop so that gui thread can be updated while searching
-        QApplication::processEvents();
+        QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
     }
     progress.setValue(100);
 }
@@ -531,8 +532,8 @@ void MainWindow::clear()
 ///
 void MainWindow::about()
 {
-    QMessageBox::about(this, tr("About TraceTerminal++"),
-                       tr("<b>TraceTerminal++</b> offers view, search in file, export/import trace file in-place. "
+    QMessageBox::about(this, "About TraceTerminal++",
+                       "<b>TraceTerminal++</b> offers view, search in file, export/import trace file in-place. "
                           "Inspired by TraceTerminal app.<br>"
-                          "Author: Nhodang"));
+                          "Author: Nhodang");
 }

@@ -69,6 +69,7 @@ void SearchDock::onSearchClicked()
     QString text = m_lineEdit->text();
     if (text.isEmpty())
     {
+        m_lastNormalSearchText.clear();
         return;
     }
     emit search(false, m_lastNormalSearchText != text);
@@ -77,6 +78,7 @@ void SearchDock::onSearchClicked()
 
 void SearchDock::onAdvSearchClicked()
 {
+    m_lastNormalSearchText.clear();
     if (m_advSearchList->isHidden())
     {
         m_advSearchList->show();
@@ -87,7 +89,6 @@ void SearchDock::onAdvSearchClicked()
         return;
     }
     clearAdvSearchList();
-    m_lastNormalSearchText.clear();
     emit search(true);
 }
 

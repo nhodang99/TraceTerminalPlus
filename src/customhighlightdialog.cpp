@@ -16,7 +16,7 @@ CustomHighlightDialog::CustomHighlightDialog(QWidget *parent)
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     auto customList = settings.value(Config::CUSTOMS, QStringList()).toStringList();
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < Highlight::CUSTOM_COLOR_NUMBER; ++i)
     {
         QLabel *label = new QLabel(this);
         QImage image(22, 22, QImage::Format_RGB32);

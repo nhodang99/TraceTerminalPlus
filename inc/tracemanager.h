@@ -2,31 +2,32 @@
 #define TRACEMANAGER_H
 
 #include <QObject>
-#include <QMutex>
-#include "inc/traceview.h"
+#include <QMap>
+#include <QString>
+//#include <QMutex>
 
 class TraceManager : public QObject
 {
     Q_OBJECT
 public:
-    ~TraceManager();
     static TraceManager& instance();
-    void setCustoms(QStringList&);
 
-    void setView(TraceView* view) { m_view = view; }
+    void setCustoms(QStringList&);
     void processTraceLine(QString&);
 
 public slots:
     void onNewDataReady(QByteArray);
+
+signals:
+    void newTracesReady(QStringList);
 
 private:
     TraceManager();
     void filterIncompletedFromData(QString& data);
     void processAndSendTraceToView(QString& data);
 
-    QMutex      m_mutex;
-    QString     m_pendingData;
-    TraceView*  m_view;
+//    QMutex      m_mutex;
+    QString                m_pendingData;
     QMap<QString, QString> defaultColors;
     QMap<QString, QString> customColors;
 };
