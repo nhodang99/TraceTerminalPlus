@@ -2,17 +2,15 @@
 #include "inc/udpserver.h"
 #include "inc/tracemanager.h"
 #include <QApplication>
-#include <QAbstractSocket>
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setOrganizationName("None");
     app.setOrganizationDomain("None");
-    app.setApplicationName("TraceTerminalPlus");
+    app.setApplicationName("TraceTerminal++");
     app.setApplicationVersion("1.0");
     app.setAttribute(Qt::AA_DontShowIconsInMenus);
-    qRegisterMetaType<QHostAddress>("QHostAddress");
 
     UdpServer& server = UdpServer::instance();
     TraceManager& traceMgr = TraceManager::instance();
@@ -22,9 +20,9 @@ int main(int argc, char *argv[])
     QObject::connect(&server, &UdpServer::bindResult,
                      mainWindow.getLiveView(), &TraceView::onSocketBindResult, Qt::QueuedConnection);
     // Connect trace view to server
-    QObject::connect(mainWindow.getLiveView(), &TraceView::changeHost,
+    QObject::connect(mainWindow.getLiveView(), &TraceView::hostChangeRequested,
                      &server, &UdpServer::onHostChangeRequested, Qt::QueuedConnection);
-    QObject::connect(mainWindow.getLiveView(), &TraceView::changePort,
+    QObject::connect(mainWindow.getLiveView(), &TraceView::portChangeRequested,
                      &server, &UdpServer::onPortChangeRequested, Qt::QueuedConnection);
 
     // Connect server to trace manager

@@ -1,13 +1,11 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QHostAddress>
 #include <QMainWindow>
 #include "traceview.h"
 #include "searchdock.h"
 
 QT_BEGIN_NAMESPACE
-class QHostAddress;
 class QAction;
 class QActionGroup;
 class QMenu;
@@ -72,5 +70,6 @@ private:
     //! [Attr]
     bool          m_isOccurrencesHighlighted {false};
     QTextCursor   m_lastSearchCursor;
+    TraceView*    m_viewInAdvSearch{nullptr};
 };
 #endif // MAINWINDOW_H

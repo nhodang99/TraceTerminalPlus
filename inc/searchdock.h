@@ -7,6 +7,7 @@
 QT_BEGIN_NAMESPACE
 class QLineEdit;
 class QListWidget;
+class QListWidgetItem;
 class QCheckBox;
 QT_END_NAMESPACE
 
@@ -28,7 +29,7 @@ protected:
 public slots:
     void onSearchClicked();
     void onAdvSearchClicked();
-    void onResultClicked(int);
+    void onResultDoubleClicked(QListWidgetItem*);
 
 signals:
     void search(bool advanced = false, bool newSearch = true);

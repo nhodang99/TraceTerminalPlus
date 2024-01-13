@@ -26,24 +26,23 @@ public slots:
     void clearUntilHere();
     void toggleAutoScroll();
     void setCustomHiglights();
-
-    void setHost(QAction*);
-    void setPort();
     void setSpecificHost();
+
     void setIncompletedFunction();
-    void onSocketBindResult(QHostAddress, quint16, bool);
+    void onSocketBindResult(QString, quint16, bool);
     void onNewTracesReady(QStringList);
 
 signals:
-    void changeHost(QHostAddress);
-    void changePort(quint16);
+    void hostChangeRequested(QString);
+    void portChangeRequested(quint16);
 
 private:
     void createActions();
     void createSetHostActions();
 
-    QAction* actionFromHostAddress(QHostAddress&) const;
-    QHostAddress& hostAddressFromAction(QAction*);
+    QAction* toAction(QString&) const;
+    void changeHost(const QString&);
+    void changePort();
 
     //! [Actions]
     QAction* m_saveAct;
@@ -68,7 +67,8 @@ private:
     bool         m_autoScroll{false};
     QTextCursor  m_clearUntilCursor;
     quint16      m_currentPort{911}; // for context menu
-    QHostAddress m_currentSpecificHost{QHostAddress("192.168.137.1")}; // For context menu, managed on gui
+    QString      m_currentSpecificHost{"192.168.137.1"}; // For context menu, managed on gui
+    QString      m_waitingStep{"oooo0"};
 };
 
 #endif // TRACEVIEW_H

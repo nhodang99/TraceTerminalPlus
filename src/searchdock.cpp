@@ -55,11 +55,13 @@ SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
 
     connect(searchButton, &QPushButton::clicked, this, &SearchDock::onSearchClicked);
     connect(advSearchButton, &QPushButton::clicked, this, &SearchDock::onAdvSearchClicked);
-    connect(m_advSearchList, &QListWidget::currentRowChanged, this, &SearchDock::onResultClicked);
+    connect(m_advSearchList, &QListWidget::itemDoubleClicked,
+            this, &SearchDock::onResultDoubleClicked);
 }
 
 void SearchDock::hideEvent(QHideEvent* event)
 {
+    m_lastNormalSearchText.clear();
     emit searchDockHidden();
     event->accept();
 }
@@ -128,13 +130,9 @@ void SearchDock::clearAdvSearchList()
     m_searchResultCursors.clear();
 }
 
-void SearchDock::onResultClicked(int row)
+void SearchDock::onResultDoubleClicked(QListWidgetItem* item)
 {
-    if (row == -1 )
-    {
-        // Result cleared
-        return;
-    }
+    auto row = m_advSearchList->row(item);
     const auto cursor = m_searchResultCursors.at(row);
     emit searchResultSelected(cursor);
 }
@@ -144,6 +142,10 @@ void SearchDock::show(bool advanced)
     if (isHidden())
     {
         QDockWidget::show();
+    }
+    if (!m_lineEdit->text().isEmpty())
+    {
+        m_lineEdit->selectAll();
     }
 
     if (advanced && m_advSearchList->isHidden())

@@ -1,7 +1,6 @@
 #include "inc/tracemanager.h"
 #include "inc/constants.h"
 #include <QSettings>
-#include <QFileInfo>
 #include <QDebug>
 
 TraceManager::TraceManager()
@@ -25,8 +24,8 @@ TraceManager::TraceManager()
 ///
 TraceManager& TraceManager::instance()
 {
-    static TraceManager manager;
-    return manager;
+    static TraceManager unique;
+    return unique;
 }
 
 ///
@@ -53,10 +52,9 @@ void TraceManager::setCustoms(QStringList& list)
 /// \brief TraceManager::onNewDataReady
 /// \param raw
 ///
-void TraceManager::onNewDataReady(QByteArray raw)
+void TraceManager::onNewDataReady(const QByteArray raw)
 {
     auto data = QString(raw);
-//    QtConcurrent::run(this, &TraceManager::processAndSendTraceToView, data);
     processAndSendTraceToView(data);
 }
 
@@ -69,7 +67,7 @@ void TraceManager::processTraceLine(QString& line)
     QString tag;
     const QString endTag = "</span>";
     QMapIterator<QString, QString> it(defaultColors);
-    while(it.hasNext())
+    while (it.hasNext())
     {
         it.next();
         if (!it.value().isEmpty() && line.contains(it.value()))
@@ -81,7 +79,7 @@ void TraceManager::processTraceLine(QString& line)
 
     //  The custom highlight can override the default one
     QMapIterator<QString, QString> cIt(customColors);
-    while(cIt.hasNext())
+    while (cIt.hasNext())
     {
         cIt.next();
         if (!cIt.value().isEmpty() && line.contains(cIt.value()))
@@ -125,7 +123,6 @@ void TraceManager::filterIncompletedFromData(QString& data)
     else
     {
         auto idx = data.lastIndexOf("\r\n");
-        // Normally we should be able to find idx
         if (idx != -1)
         {
             m_pendingData = data.right(length - (idx + 1) - 1);
@@ -148,14 +145,11 @@ void TraceManager::filterIncompletedFromData(QString& data)
 ///
 void TraceManager::processAndSendTraceToView(QString& data)
 {
-//    QMutexLocker locker(&m_mutex);
     if (data.isEmpty())
     {
         return;
     }
 
-    qDebug() << data;
-    qDebug() << "---------------------";
     filterIncompletedFromData(data);
     if (data.isEmpty())
     {

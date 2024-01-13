@@ -16,7 +16,7 @@ public:
     void processTraceLine(QString&);
 
 public slots:
-    void onNewDataReady(QByteArray);
+    void onNewDataReady(const QByteArray);
 
 signals:
     void newTracesReady(QStringList);

@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QHostAddress>
 
 // Common constants
 namespace Config
@@ -18,11 +19,19 @@ const QString SEARCH_LOOPSEARCH     = QStringLiteral("search/loopSearch");
 const QString CUSTOMS               = QStringLiteral("custom/customs");
 }
 
+// @TODO: Fix non-POD warning
 namespace Highlight
 {
 const int CUSTOM_COLOR_NUMBER = 5;
-// @TODO: Fix non-POD warning
 static const QStringList customs = {"magenta", "blue", "deepskyblue", "peru", "teal"};
+}
+
+// @TODO: Fix non-POD warning
+namespace SpecialInterface
+{
+static const QString ANY_INTERFACE = QHostAddress(QHostAddress::Any).toString();
+static const QString ANY_IPV6_INTERFACE = QHostAddress(QHostAddress::AnyIPv6).toString();
+static const QString LOCALHOST_INTERFACE = QHostAddress(QHostAddress::LocalHost).toString();
 }
 
 #endif // CONSTANTS_H

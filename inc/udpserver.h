@@ -2,6 +2,7 @@
 #define UDPSERVER_H
 
 #include <QUdpSocket>
+#include <QTimer>
 
 class UdpServer : public QUdpSocket
 {
@@ -12,23 +13,25 @@ public:
 
     void initSocket();
     void reinitSocket();
-    void onHostChangeRequested(QHostAddress);
+    void onHostChangeRequested(QString);
     void onPortChangeRequested(quint16);
 
 private slots:
     void onReadyRead();
+    void retryRemoteConnecting();
 
 signals:
-    void bindResult(QHostAddress, quint16, bool);
-    void newDataReady(QByteArray);
+    void bindResult(QString, quint16, bool);
+    void newDataReady(const QByteArray);
 
 private:
     UdpServer();
 
-    QUdpSocket*  m_udpSocket{nullptr};
-    QHostAddress m_host{QHostAddress::Any};
-    quint16      m_port{911};
-    bool         m_lastBindSuccess{true};
+    QUdpSocket* m_udpSocket{nullptr};
+    QString     m_host{"0.0.0.0"};
+    quint16     m_port{911};
+    bool        m_lastBindSuccess{true};
+    QTimer*     m_timer;
 };
 
 #endif // UDPSERVER_H

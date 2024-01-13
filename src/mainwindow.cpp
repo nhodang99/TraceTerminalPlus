@@ -180,9 +180,13 @@ void MainWindow::dropEvent(QDropEvent* event)
 void MainWindow::onTabCloseRequested(int index)
 {
     auto pView = m_tabWidget->widget(index);
-    if (pView)
+    if (pView != nullptr)
     {
         pView->deleteLater();
+    }
+    if (m_viewInAdvSearch == pView)
+    {
+        m_viewInAdvSearch = nullptr;
     }
 }
 
@@ -340,9 +344,9 @@ void MainWindow::normalSearch(bool newSearch)
     auto isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     auto isLoopSearch = m_searchDock->isLoopSearchChecked();
 
-    // If new word searched: start finding from current cursor in current view
+    // If new word searched: start finding from the beginning
     // If continue to search the next result, search from the last found cursor
-    auto foundCursor = document->find(text, newSearch ? currentView->textCursor() : m_lastSearchCursor,
+    auto foundCursor = document->find(text, newSearch ? QTextCursor() : m_lastSearchCursor,
                                       isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
     if (foundCursor.isNull())
     {
@@ -365,7 +369,6 @@ void MainWindow::normalSearch(bool newSearch)
         {
             return;
         }
-
     }
 
     // Save the found cursor so that we can continue to search from there later
@@ -430,6 +433,7 @@ void MainWindow::advancedSearch()
         QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
     }
     progress.setValue(100);
+    m_viewInAdvSearch = currentView;
 }
 
 ///
@@ -438,7 +442,17 @@ void MainWindow::advancedSearch()
 ///
 void MainWindow::onSearchResultSelected(const QTextCursor cursor)
 {
+    if (m_viewInAdvSearch == nullptr)
+    {
+        return;
+    }
+
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    if (currentView != m_viewInAdvSearch)
+    {
+        m_tabWidget->setCurrentWidget(m_viewInAdvSearch);
+        currentView = m_viewInAdvSearch;
+    }
     QList<QTextEdit::ExtraSelection> extraSelections;
 
     auto cursorOnLine = cursor;
