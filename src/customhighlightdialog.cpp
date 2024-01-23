@@ -7,10 +7,10 @@
 #include <QFormLayout>
 
 CustomHighlightDialog::CustomHighlightDialog(QWidget *parent)
-    : QDialog(parent, Qt::MSWindowsFixedSizeDialogHint)
+    : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint)
 {
     setWindowTitle("Custom Highlights");
-    setMinimumSize(400, 180);
+    setMinimumSize(400, 190);
     QFormLayout* mainLayout = new QFormLayout(this);
 
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
@@ -40,12 +40,9 @@ CustomHighlightDialog::CustomHighlightDialog(QWidget *parent)
                                                        Qt::Horizontal, this );
     mainLayout->addWidget(buttonBox);
 
-    bool conn = connect(buttonBox, &QDialogButtonBox::accepted,
-                        this, &CustomHighlightDialog::accept);
-    Q_ASSERT(conn);
-    conn = connect(buttonBox, &QDialogButtonBox::rejected,
-                   this, &CustomHighlightDialog::reject);
-    Q_ASSERT(conn);
+    connect(buttonBox, &QDialogButtonBox::accepted, this, &CustomHighlightDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &CustomHighlightDialog::reject);
+
     setLayout(mainLayout);
 }
 
@@ -55,10 +52,13 @@ QStringList CustomHighlightDialog::getStrings(QWidget *parent, bool *ok)
     QStringList list;
 
     const int ret = dialog->exec();
-    if (ok != nullptr)
+    if (ok)
+    {
         *ok = !!ret;
+    }
 
-    if (ret) {
+    if (ret)
+    {
         for (auto& field : dialog->fields) {
             list << field->text();
         }

@@ -12,12 +12,11 @@ This is a side project for me to practice how to build an app from scratch.
 
 ## What was done
 - Catch traces 'quite' smoothly
-- Connect to any inteface, any IPv6 host only, localhost only, or a specific address
+- Connect to an specific interface and port
 - Open and convert txt file, save file in both rich text and plain text
 - Custom highlights
 - Searching in file
 
 ## Todo list
 - Handle trace scrolling effect
-- Create shortcut to connect remote host only, serial host only
 - Handle trace selection by mouse and keyboard

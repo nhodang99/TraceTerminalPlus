@@ -1,9 +1,8 @@
-QT       += core gui network concurrent
+QT       += core gui network concurrent serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
-RC_ICONS = img/favicon.ico
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -14,8 +13,8 @@ SOURCES += \
     src/mainwindow.cpp \
     src/searchdock.cpp \
     src/tracemanager.cpp \
+    src/traceserver.cpp \
     src/traceview.cpp \
-    src/udpserver.cpp \
     src/main.cpp
 
 HEADERS += \
@@ -24,13 +23,14 @@ HEADERS += \
     inc/mainwindow.h \
     inc/searchdock.h \
     inc/tracemanager.h \
-    inc/traceview.h \
-    inc/udpserver.h
+    inc/traceserver.h \
+    inc/traceview.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
+RC_ICONS = img/favicon.ico
 RESOURCES += \
     images.qrc

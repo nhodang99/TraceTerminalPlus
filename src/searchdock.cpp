@@ -6,10 +6,10 @@
 #include <QLineEdit>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QMessageBox>
 #include <QListWidget>
 #include <QHideEvent>
 #include <QCheckBox>
+#include <QMessageBox>
 
 SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
     : QDockWidget(parent, Qt::Widget)
@@ -24,8 +24,8 @@ SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
     m_caseSensitiveCheck->setChecked(caseSensitive);
     m_loopCheck = new QCheckBox("Loop", this);
     m_loopCheck->setChecked(loopSearch);
-    auto searchButton = new QPushButton("Search");
-    auto advSearchButton = new QPushButton("Advanced search");
+    m_searchButton = new QPushButton("Search");
+    m_advSearchButton = new QPushButton("Advanced search");
 
     QHBoxLayout* searchRowLayout = new QHBoxLayout;
     searchRowLayout->setSpacing(5);
@@ -33,8 +33,8 @@ SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
     searchRowLayout->addWidget(m_lineEdit);
     searchRowLayout->addWidget(m_caseSensitiveCheck);
     searchRowLayout->addWidget(m_loopCheck);
-    searchRowLayout->addWidget(searchButton);
-    searchRowLayout->addWidget(advSearchButton);
+    searchRowLayout->addWidget(m_searchButton);
+    searchRowLayout->addWidget(m_advSearchButton);
 
     m_advSearchList = new QListWidget;
     m_advSearchList->hide();
@@ -51,10 +51,16 @@ SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
 
     setFocusProxy(m_lineEdit);
     m_lineEdit->setFocusPolicy(Qt::StrongFocus);
-    searchButton->setDefault(true);
+    m_searchButton->setDefault(true);
 
-    connect(searchButton, &QPushButton::clicked, this, &SearchDock::onSearchClicked);
-    connect(advSearchButton, &QPushButton::clicked, this, &SearchDock::onAdvSearchClicked);
+    connect(m_lineEdit, &QLineEdit::returnPressed, this, [=](){
+        if (m_searchButton->isDefault())
+            this->onSearchClicked();
+        else if (m_advSearchButton->isDefault())
+            this->onAdvSearchClicked();
+    });
+    connect(m_searchButton, &QPushButton::clicked, this, &SearchDock::onSearchClicked);
+    connect(m_advSearchButton, &QPushButton::clicked, this, &SearchDock::onAdvSearchClicked);
     connect(m_advSearchList, &QListWidget::itemDoubleClicked,
             this, &SearchDock::onResultDoubleClicked);
 }
@@ -76,6 +82,8 @@ void SearchDock::onSearchClicked()
     }
     emit search(false, m_lastNormalSearchText != text);
     m_lastNormalSearchText = text;
+    m_searchButton->setDefault(true);
+    m_advSearchButton->setDefault(false);
 }
 
 void SearchDock::onAdvSearchClicked()
@@ -92,11 +100,13 @@ void SearchDock::onAdvSearchClicked()
     }
     clearAdvSearchList();
     emit search(true);
+    m_searchButton->setDefault(false);
+    m_advSearchButton->setDefault(true);
 }
 
 QString SearchDock::getSearchText() const
 {
-    if (m_lineEdit == nullptr)
+    if (!m_lineEdit)
     {
         return "";
     }
@@ -132,6 +142,13 @@ void SearchDock::clearAdvSearchList()
 
 void SearchDock::onResultDoubleClicked(QListWidgetItem* item)
 {
+    if (m_advSearchList->count() != m_searchResultCursors.length())
+    {
+        QMessageBox::critical(this, "ERROR!!!",
+                              "Something wrong happenned, please try to repeat the action!",
+                              QMessageBox::Ok);
+        return;
+    }
     auto row = m_advSearchList->row(item);
     const auto cursor = m_searchResultCursors.at(row);
     emit searchResultSelected(cursor);
@@ -148,12 +165,22 @@ void SearchDock::show(bool advanced)
         m_lineEdit->selectAll();
     }
 
-    if (advanced && m_advSearchList->isHidden())
+    if (advanced)
     {
-        m_advSearchList->show();
+        if (m_advSearchList->isHidden())
+        {
+            m_advSearchList->show();
+        }
+        m_searchButton->setDefault(false);
+        m_advSearchButton->setDefault(true);
     }
-    else if (!advanced && !m_advSearchList->isHidden())
+    else
     {
-        m_advSearchList->hide();
+        if (!m_advSearchList->isHidden())
+        {
+            m_advSearchList->hide();
+        }
+        m_searchButton->setDefault(true);
+        m_advSearchButton->setDefault(false);
     }
 }

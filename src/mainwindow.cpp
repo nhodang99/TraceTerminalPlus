@@ -16,9 +16,9 @@ MainWindow::MainWindow()
 
     // Live traceview
     auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
-    auto specificHostStr = settings.value(Config::SPECIFIC_HOST, QString("192.168.137.1")).toString();
+    auto remoteAddress = settings.value(Config::REMOTE_ADDRESS, QString("192.168.137.1")).toString();
     m_liveView = new TraceView(true, autoscroll);
-    m_liveView->setCurrentSpecificAddress(specificHostStr);
+    m_liveView->setRemoteAddress(remoteAddress);
     m_tabWidget->addTab(m_liveView, "Live Trace");
     // Hide the close button of live view
     // @TODO: How to detect icon position?
@@ -136,7 +136,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     settings.setValue(Config::MAINWINDOW_GEOMETRY, saveGeometry());
     settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
-    settings.setValue(Config::SPECIFIC_HOST, m_liveView->getCurrentSpecificAddress());
+    settings.setValue(Config::REMOTE_ADDRESS, m_liveView->getRemoteAddress());
     settings.setValue(Config::SEARCH_CASESENSITIVE, m_searchDock->isCaseSensitiveChecked());
     settings.setValue(Config::SEARCH_LOOPSEARCH, m_searchDock->isLoopSearchChecked());
     event->accept();
@@ -180,13 +180,13 @@ void MainWindow::dropEvent(QDropEvent* event)
 void MainWindow::onTabCloseRequested(int index)
 {
     auto pView = m_tabWidget->widget(index);
-    if (pView != nullptr)
+    if (pView)
     {
         pView->deleteLater();
-    }
-    if (m_viewInAdvSearch == pView)
-    {
-        m_viewInAdvSearch = nullptr;
+        if (m_viewInAdvSearch == pView)
+        {
+            m_viewInAdvSearch = nullptr;
+        }
     }
 }
 
@@ -263,24 +263,28 @@ void MainWindow::openFile(QString& url)
     }
     progress.setValue(50);
 
-    // @TODO: process html line by line produce 2 redundant first line (html formatting line)
-    bool isTxt = fileInfo.suffix() == "txt";
     QTextStream in(&file);
-    while (!in.atEnd())
+    if (fileInfo.suffix() == "txt")
     {
-        if (progress.wasCanceled())
+        while (!in.atEnd())
         {
-            offlineView->append("<span style=\"color:orange\">Process aborted.</span>");
-            break;
-        }
-        auto line = in.readLine();
-        if (isTxt)
-        {
+            if (progress.wasCanceled())
+            {
+                offlineView->append("<span style=\"color:orange\">Process aborted.</span>");
+                break;
+            }
+            auto line = in.readLine();
             TraceManager::instance().processTraceLine(line);
+            offlineView->append(line);
+            // Process event loop so that gui thread can be updated while appending the text still occuring
+            QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
         }
-        offlineView->append(line);
-        // Process event loop so that gui thread can be updated while appending the text still occuring
-        QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
+    }
+    else
+    {
+        // @TODO: read html is a bit laggy because using readAll, but
+        // append line by line is slower than setHtml
+        offlineView->setHtml(in.readAll());
     }
     progress.setValue(100);
 }
@@ -442,7 +446,7 @@ void MainWindow::advancedSearch()
 ///
 void MainWindow::onSearchResultSelected(const QTextCursor cursor)
 {
-    if (m_viewInAdvSearch == nullptr)
+    if (!m_viewInAdvSearch)
     {
         return;
     }

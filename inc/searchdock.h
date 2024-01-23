@@ -9,6 +9,7 @@ class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
 class QCheckBox;
+class QPushButton;
 QT_END_NAMESPACE
 
 class SearchDock : public QDockWidget
@@ -39,6 +40,8 @@ signals:
 private:
     void clearAdvSearchList();
 
+    QPushButton*        m_searchButton;
+    QPushButton*        m_advSearchButton;
     QLineEdit*          m_lineEdit;
     QListWidget*        m_advSearchList;
     QCheckBox*          m_caseSensitiveCheck;

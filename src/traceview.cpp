@@ -43,11 +43,8 @@ void TraceView::contextMenuEvent(QContextMenuEvent *event)
     menu->addAction(m_setAnyItfAct);
     menu->addAction(m_setAnyItfIpv6Act);
     menu->addAction(m_setLocalItfAct);
-    // @TODO: add these 2 actions.
-    // At the moment we can manually use them by set specific address
-//    menu->addAction(m_setRemoteItfAct);
-//    menu->addAction(m_setSerialItfAct);
-    menu->addAction(m_setSpecificItfAct);
+    menu->addAction(m_setRemoteItfAct);
+    menu->addAction(m_setSerialItfAct);
     menu->addSeparator();
     menu->addAction(m_setPortAct);
 
@@ -133,7 +130,7 @@ void TraceView::createSetHostActions()
     m_setAnyItfAct->setIcon(QIcon(":/img/checkmark.png"));
     m_setAnyItfAct->setEnabled(m_liveview);
     connect(m_setAnyItfAct, &QAction::triggered, this, [=](){
-        changeHost(SpecialInterface::ANY_INTERFACE);
+        changeInterface(SpecialInterface::ANY_INTERFACE);
     });
 
     m_setAnyItfIpv6Act = new QAction("Any Interface IPv6", this);
@@ -141,7 +138,7 @@ void TraceView::createSetHostActions()
     m_setAnyItfIpv6Act->setIcon(QIcon(":/img/checkmark.png"));
     m_setAnyItfIpv6Act->setEnabled(m_liveview);
     connect(m_setAnyItfIpv6Act, &QAction::triggered, this, [=](){
-        changeHost(SpecialInterface::ANY_IPV6_INTERFACE);
+        changeInterface(SpecialInterface::ANY_IPV6_INTERFACE);
     });
 
     m_setLocalItfAct = new QAction("Local Interface", this);
@@ -149,34 +146,23 @@ void TraceView::createSetHostActions()
     m_setLocalItfAct->setIcon(QIcon(":/img/checkmark.png"));
     m_setLocalItfAct->setEnabled(m_liveview);
     connect(m_setLocalItfAct, &QAction::triggered, this, [=](){
-        changeHost(SpecialInterface::LOCALHOST_INTERFACE);
+        changeInterface(SpecialInterface::LOCALHOST_INTERFACE);
     });
 
-    //@TODO: How to get the remote interface and serial interface
-    /*
-    m_setRemoteItfAct = new QAction("Remote interface", this);
-    m_setRemoteItfAct->setStatusTip("Listen to remote interface only");
-//    setRemoteItfAct->setIcon(QIcon(":/img/checkmark.png"));
-    m_setRemoteItfAct->setIcon(QIcon(":/img/warning.png"));
-    m_setRemoteItfAct->setIconVisibleInMenu(true);
+    m_setRemoteItfAct = new QAction(QString("Remote Interface... - [%1]")
+                                        .arg(m_remoteAddress), this);
+    m_setRemoteItfAct->setStatusTip("Connect to an interface set by user. Default 192.168.137.1");
+    m_setRemoteItfAct->setIcon(QIcon(":/img/checkmark.png"));
     m_setRemoteItfAct->setEnabled(m_liveview);
-    connect(m_setRemoteItfAct, &QAction::triggered, this, &TraceView::setIncompletedFunction);
+    connect(m_setRemoteItfAct, &QAction::triggered, this, &TraceView::promptAndSetRemoteInterface);
 
     m_setSerialItfAct = new QAction("Serial interface", this);
     m_setSerialItfAct->setStatusTip("Listen to serial interface only");
-//    setSerialItfAct->setIcon(QIcon(":/img/checkmark.png"));
-    m_setSerialItfAct->setIcon(QIcon(":/img/warning.png"));
-    m_setSerialItfAct->setIconVisibleInMenu(true);
+    m_setSerialItfAct->setIcon(QIcon(":/img/checkmark.png"));
     m_setSerialItfAct->setEnabled(m_liveview);
-    connect(m_setSerialItfAct, &QAction::triggered, this, &TraceView::setIncompletedFunction);
-    */
-
-    m_setSpecificItfAct = new QAction(QString("Other Interface... - [%1]")
-                                          .arg(m_currentSpecificHost), this);
-    m_setSpecificItfAct->setStatusTip("Connect to an interface set by user. Default 192.168.137.1");
-    m_setSpecificItfAct->setIcon(QIcon(":/img/checkmark.png"));
-    m_setSpecificItfAct->setEnabled(m_liveview);
-    connect(m_setSpecificItfAct, &QAction::triggered, this, &TraceView::setSpecificHost);
+    connect(m_setSerialItfAct, &QAction::triggered, this, [=](){
+        changeInterface(SpecialInterface::SERIAL_INTERFACE);
+    });
 }
 
 ///
@@ -189,12 +175,13 @@ QAction* TraceView::toAction(QString& addr) const
     QHash<QString, QAction*> hash = {
         { SpecialInterface::ANY_INTERFACE,       m_setAnyItfAct },
         { SpecialInterface::ANY_IPV6_INTERFACE,  m_setAnyItfIpv6Act },
-        { SpecialInterface::LOCALHOST_INTERFACE, m_setLocalItfAct }
+        { SpecialInterface::LOCALHOST_INTERFACE, m_setLocalItfAct },
+        { SpecialInterface::SERIAL_INTERFACE,    m_setSerialItfAct }
     };
     auto action = hash[addr];
-    if (action == nullptr)
+    if (!action)
     {
-        return m_setSpecificItfAct;
+        return m_setRemoteItfAct;
     }
     return action;
 }
@@ -203,59 +190,59 @@ QAction* TraceView::toAction(QString& addr) const
 /// \brief TraceView::setHost
 /// \param addr
 ///
-void TraceView::changeHost(const QString& addr)
+void TraceView::changeInterface(const QString& addr)
 {
     if (addr.isEmpty() || !m_liveview)
     {
         return;
     }
-    emit hostChangeRequested(addr);
+    emit interfaceChangeRequested(addr);
 }
 
 ///
-/// \brief TraceView::setSpecificHost
+/// \brief TraceView::promptAndSetRemoteInterface
 ///
-void TraceView::setSpecificHost()
+void TraceView::promptAndSetRemoteInterface()
 {
     if (!m_liveview)
     {
         return;
     }
     bool ok;
-    auto addr = QInputDialog::getText(this, "Set Specific Interface",
-                                      "Address:", QLineEdit::Normal,
-                                      m_currentSpecificHost, &ok,
-                                      Qt::MSWindowsFixedSizeDialogHint);
+    auto addr = QInputDialog::getText(this, "Set Remote Interface",
+                                      "Remote Address:", QLineEdit::Normal,
+                                      m_remoteAddress, &ok,
+                                      Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
     if (ok && !addr.isEmpty())
     {
-        if (toAction(addr) == m_setSpecificItfAct)
+        if (toAction(addr) == m_setRemoteItfAct)
         {
-            m_currentSpecificHost = addr;
+            m_remoteAddress = addr;
         }
         // Else in case user set the address of special interface,
-        // We active special action instead of Set Specific Interface and keep m_currentSpecificHost
-        emit hostChangeRequested(addr);
+        // We active special action instead of Remote Interface and keep m_remoteAddress
+        emit interfaceChangeRequested(addr);
     }
 }
 
 ///
-/// \brief TraceView::setCurrentSpecificAddress
+/// \brief TraceView::setRemoteAddress
 /// \param addr
 ///
-void TraceView::setCurrentSpecificAddress(QString& addr)
+void TraceView::setRemoteAddress(QString& addr)
 {
-    m_currentSpecificHost = addr;
-    auto setHostActTitle = QString("Other interface... - [%1]").arg(addr);
-    m_setSpecificItfAct->setText(setHostActTitle);
+    m_remoteAddress = addr;
+    auto setHostActTitle = QString("Remote interface... - [%1]").arg(addr);
+    m_setRemoteItfAct->setText(setHostActTitle);
 }
 
 ///
-/// \brief getCurrentSpecificHost
+/// \brief getRemoteAddress
 /// \return
 ///
-QString TraceView::getCurrentSpecificAddress() const
+QString TraceView::getRemoteAddress() const
 {
-    return m_currentSpecificHost;
+    return m_remoteAddress;
 }
 
 ///
@@ -267,7 +254,7 @@ void TraceView::changePort()
     int port = QInputDialog::getInt(this, "Set port",
                                     "Port number (1 - 65535)",
                                     m_currentPort, 1, 65535, 1, &ok,
-                                    Qt::MSWindowsFixedSizeDialogHint);
+                                    Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
     if (ok)
     {
         emit portChangeRequested((quint16)port);
@@ -364,18 +351,6 @@ void TraceView::toggleAutoScroll()
 }
 
 ///
-/// \brief Temporary function
-///
-void TraceView::setIncompletedFunction()
-{
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Under construction!");
-    msgBox.setText("We are working on it.");
-    msgBox.setIcon(QMessageBox::Information);
-    msgBox.exec();
-}
-
-///
 /// \brief TraceView::onNewTracesReady
 /// \param traces
 ///
@@ -391,8 +366,6 @@ void TraceView::onNewTracesReady(QStringList traces)
     {
         append(trace);
     }
-//    qDebug() << traces;
-//    qDebug() << "-------------------------";
     if (m_autoScroll)
     {
         moveCursor(QTextCursor::End);
@@ -418,24 +391,24 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
     }
 
     auto act = toAction(addr);
-    if (act == nullptr)
+    if (!act)
     {
-        qDebug() << "Something wrong";
+        QMessageBox::critical(this, "ERROR!!!", "Please restart the application");
         return;
     }
-    if (m_lastSetItfAct != nullptr)
+    if (m_lastSetItfAct)
     {
         m_lastSetItfAct->setIconVisibleInMenu(false);
     }
     act->setIconVisibleInMenu(true);
 
-    if (act == m_setSpecificItfAct)
+    if (act == m_setRemoteItfAct)
     {
-        // Display current specific host right in the action
-        // Eg.: Other interface... - [192.168.137.1]
-        auto setHostActTitle = QString("Other interface... - [%1]")
-                                   .arg(m_currentSpecificHost);
-        m_setSpecificItfAct->setText(setHostActTitle);
+        // Display current remote address right in the action
+        // Eg.: Remote interface... - [192.168.137.1]
+        auto setHostActTitle = QString("Remote interface... - [%1]")
+                                   .arg(m_remoteAddress);
+        m_setRemoteItfAct->setText(setHostActTitle);
     }
     m_currentPort = port;
     // Display current port number right in the action. Eg.: Configure Port - [800]
@@ -445,14 +418,18 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
     QString msg;
     if (success)
     {
-        msg = QString("<span style=\"color:black\">>Binding to %1:%2 interface OK</span>")
-                  .arg(addr, QString::number(m_currentPort));
+        msg = QString("<span style=\"color:black\">>Binding to %1").arg(addr);
+        if (act != m_setSerialItfAct)
+        {
+            msg += QString(":%1").arg(QString::number(m_currentPort));
+        }
+        msg += " interface OK</span>";
     }
     else
     {
-        // For user set interface, maybe it is not avaiable in the network at the moment
+        // For remote interface, maybe it is not avaiable in the network at the moment
         // But maybe it will later, so we need to continuously retry binding to it
-        if (act == m_setSpecificItfAct)
+        if (act == m_setRemoteItfAct)
         {
             // Find next step of waiting bar
             auto idx = m_waitingStep.indexOf("0");
@@ -460,26 +437,29 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
             m_waitingStep.replace(idx, 1, "o");
             m_waitingStep.replace(nextIdx, 1, "0");
 
-            msg = QString("<span style=\"color:blue\">>Binding to %1:%2 interface...   %3</span>")
-                      .arg(addr, QString::number(m_currentPort), m_waitingStep);
-
             // Remove the last line to replace by new step
-            if (m_lastSetItfAct != nullptr && m_lastSetItfAct == act)
+            if (m_lastSetItfAct && m_lastSetItfAct == act)
             {
                 auto cursor = textCursor();
                 cursor.movePosition(QTextCursor::End);
-                cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-                // Reach the end of last line so that append does not create the blank line in betwee
-                cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor);
-                cursor.removeSelectedText();
+                cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, m_waitingStep.length());
+                // Replace old waiting step by the new one
+                cursor.insertHtml(QString("<span style=\"color:blue\">%1</span>").arg(m_waitingStep));
+                m_lastSetItfAct = act;
+                return;
             }
+            // In other case, we append a full message
+            msg = QString("<span style=\"color:blue\">>Binding to %1:%2 interface...   %3</span>")
+                      .arg(addr, QString::number(m_currentPort), m_waitingStep);
         }
         else
         {
-            msg = QString("<span style=\"color:red\">>Binding to %1:%2 interface failed. ")
-                      .arg(addr, QString::number(port));
-            msg += "Please check if other application is taking over the address.";
-            msg += "</span>";
+            msg = QString("<span style=\"color:red\">>Binding to %1").arg(addr);
+            if (act != m_setSerialItfAct)
+            {
+                msg += QString(":%1").arg(QString::number(m_currentPort));
+            }
+            msg += " interface failed. Please check if other application is taking over the address.</span>";
         }
     }
 

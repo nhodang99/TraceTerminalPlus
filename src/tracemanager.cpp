@@ -89,10 +89,12 @@ void TraceManager::processTraceLine(QString& line)
         }
     }
     line.replace("\n", "<br>");
-    if (!tag.isEmpty())
+    if (tag.isEmpty())
     {
-        line = tag + line + endTag;
+        // If tag empty, use default black tag
+        tag = "<span style=\"color:black\">";
     }
+    line = tag + line + endTag;
 }
 
 ///
