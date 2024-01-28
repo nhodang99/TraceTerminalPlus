@@ -33,11 +33,8 @@ private:
     QUdpSocket*  m_udpSocket{nullptr};
     QString      m_interface{"0.0.0.0"};
     quint16      m_port{911};
-
-    QSerialPort* m_serial{nullptr};
-
-    bool         m_lastBindSuccess{true};
     QTimer*      m_timer;
+    QSerialPort* m_serial{nullptr};
 };
 
 #endif // TRACESERVER_H

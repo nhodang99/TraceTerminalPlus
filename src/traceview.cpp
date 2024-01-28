@@ -213,6 +213,7 @@ void TraceView::promptAndSetRemoteInterface()
                                       "Remote Address:", QLineEdit::Normal,
                                       m_remoteAddress, &ok,
                                       Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+    addr = addr.trimmed();
     if (ok && !addr.isEmpty())
     {
         if (toAction(addr) == m_setRemoteItfAct)
@@ -437,16 +438,24 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
             m_waitingStep.replace(idx, 1, "o");
             m_waitingStep.replace(nextIdx, 1, "0");
 
-            // Remove the last line to replace by new step
+            // Remove the old step to replace by new step
             if (m_lastSetItfAct && m_lastSetItfAct == act)
             {
                 auto cursor = textCursor();
                 cursor.movePosition(QTextCursor::End);
-                cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, m_waitingStep.length());
-                // Replace old waiting step by the new one
-                cursor.insertHtml(QString("<span style=\"color:blue\">%1</span>").arg(m_waitingStep));
-                m_lastSetItfAct = act;
-                return;
+                cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+                auto interfaceAndPort = cursor.selectedText().split(" ").at(2);
+
+                if (interfaceAndPort == QString("%1:%2").arg(m_remoteAddress,
+                                                             QString::number(m_currentPort)))
+                {
+                    cursor.movePosition(QTextCursor::End);
+                    cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, m_waitingStep.length());
+                    // Replace old waiting step by the new one
+                    cursor.insertHtml(QString("<span style=\"color:blue\">%1</span>").arg(m_waitingStep));
+                    m_lastSetItfAct = act;
+                    return;
+                }
             }
             // In other case, we append a full message
             msg = QString("<span style=\"color:blue\">>Binding to %1:%2 interface...   %3</span>")

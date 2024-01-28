@@ -113,7 +113,6 @@ void TraceServer::init()
 {
     bool res = establishConnection();
     emit bindResult(m_interface, m_port, res);
-    m_lastBindSuccess = res;
 
     connect(m_udpSocket, &QUdpSocket::readyRead, this, &TraceServer::onReadyRead);
     connect(m_serial, &QSerialPort::readyRead, this, &TraceServer::onReadyRead);
@@ -139,7 +138,6 @@ void TraceServer::reinit()
 
     bool res = establishConnection();
     emit bindResult(m_interface, m_port, res);
-    m_lastBindSuccess = res;
 }
 
 ///
@@ -217,11 +215,6 @@ void TraceServer::onReadyRead()
 ///
 void TraceServer::onInterfaceChangeRequested(QString itf)
 {
-    qDebug() << m_interface << itf << m_lastBindSuccess;
-    if (m_interface == itf && m_lastBindSuccess)
-    {
-        return;
-    }
     m_interface = itf;
     reinit();
 }
@@ -232,10 +225,6 @@ void TraceServer::onInterfaceChangeRequested(QString itf)
 ///
 void TraceServer::onPortChangeRequested(quint16 port)
 {
-    if (m_port == port && m_lastBindSuccess)
-    {
-        return;
-    }
     m_port = port;
     reinit();
 }
