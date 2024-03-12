@@ -84,7 +84,8 @@ void TraceView::createActions()
 
     m_searchAct = new QAction("Search...", this);
     m_searchAct->setShortcuts(QKeySequence::Find);
-    m_searchAct->setStatusTip("Search in the document. Use shortcut Ctrl+F for normal search, Ctrl+Shift+F for advanced search.");
+    m_searchAct->setStatusTip("Search text in the current view. Shortcut Ctrl+F for normal search, Ctrl+Shift+F for advanced search. "
+                              "Search multiple texts with syntax <text1 -AND text2...>");
     connect(m_searchAct, &QAction::triggered, this, [=](){
         auto mainWindow = (MainWindow*)this->nativeParentWidget();
         mainWindow->showSearchDock();
@@ -233,7 +234,7 @@ void TraceView::promptAndSetRemoteInterface()
 void TraceView::setRemoteAddress(QString& addr)
 {
     m_remoteAddress = addr;
-    auto setHostActTitle = QString("Remote interface... - [%1]").arg(addr);
+    QString setHostActTitle = QString("Remote interface... - [%1]").arg(addr);
     m_setRemoteItfAct->setText(setHostActTitle);
 }
 
@@ -282,11 +283,11 @@ void TraceView::setCustomHiglights()
 void TraceView::save()
 {
     static QRegularExpression noHyphensAndColons("[-:]");
-    auto strDateTime = QDateTime::currentDateTime().toString(Qt::ISODate)
-                                                   .remove(noHyphensAndColons);
-    auto defaultName = "FMTrace_" + strDateTime + "_TraceName.txt";
-    auto filename = QFileDialog::getSaveFileName(this, "TraceTerminal++ - Save file",
-                                                 defaultName, "Plain text(*.txt);;Rich text (*.html)");
+    QString strDateTime = QDateTime::currentDateTime().toString(Qt::ISODate)
+                                                      .remove(noHyphensAndColons);
+    QString defaultName = "FMTrace_" + strDateTime + "_TraceName.txt";
+    QString filename = QFileDialog::getSaveFileName(this, "TraceTerminal++ - Save file",
+                                                    defaultName, "Plain text(*.txt);;Rich text (*.html)");
     if (filename.isEmpty())
     {
         return;
@@ -407,13 +408,13 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
     {
         // Display current remote address right in the action
         // Eg.: Remote interface... - [192.168.137.1]
-        auto setHostActTitle = QString("Remote interface... - [%1]")
+        QString setHostActTitle = QString("Remote interface... - [%1]")
                                    .arg(m_remoteAddress);
         m_setRemoteItfAct->setText(setHostActTitle);
     }
     m_currentPort = port;
     // Display current port number right in the action. Eg.: Configure Port - [800]
-    auto setPortActTitle = QString("Configure Port - [%1]").arg(QString::number(m_currentPort));
+    QString setPortActTitle = QString("Configure Port - [%1]").arg(QString::number(m_currentPort));
     m_setPortAct->setText(setPortActTitle);
 
     QString msg;
@@ -433,8 +434,8 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
         if (act == m_setRemoteItfAct)
         {
             // Find next step of waiting bar
-            auto idx = m_waitingStep.indexOf("0");
-            auto nextIdx = (idx + 1) % m_waitingStep.length();
+            int idx = m_waitingStep.indexOf("0");
+            int nextIdx = (idx + 1) % m_waitingStep.length();
             m_waitingStep.replace(idx, 1, "o");
             m_waitingStep.replace(nextIdx, 1, "0");
 
@@ -444,7 +445,7 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
                 auto cursor = textCursor();
                 cursor.movePosition(QTextCursor::End);
                 cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-                auto interfaceAndPort = cursor.selectedText().split(" ").at(2);
+                QString interfaceAndPort = cursor.selectedText().split(" ").at(2);
 
                 if (interfaceAndPort == QString("%1:%2").arg(m_remoteAddress,
                                                              QString::number(m_currentPort)))

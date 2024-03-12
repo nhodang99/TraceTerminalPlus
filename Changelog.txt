@@ -1,0 +1,20 @@
+## Changelog ##
+
+- Now support multiple keywords seartch by syntax text1 -AND text2 -AND ...
+
+V1.1:
+- Connect to Remote interface, Serial interface
+- Better keyboard handling in search: when the search input box is focused, we now can directly press Enter to do searching, the search is performed depends on the current search mode.
+- Search shortcuts: Ctrl+F to open normal search mode, Ctrl+Shift+F to open advanced search mode.
+- Select text then use search shotcuts: the text will be auto fill to search input box.
+- Drag and drop trace file to app view to open file.
+
+V1.0:
+- Catch traces 'quite' smoothly
+- Connect to a specific interface and port
+- Open and convert txt file, save file in both rich text and plain text
+- Custom highlights
+- Searching in file
+Todo:
+- Handle trace scrolling effect
+- Handle trace selection by mouse and keyboard

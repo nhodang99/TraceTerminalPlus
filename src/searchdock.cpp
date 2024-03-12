@@ -10,6 +10,7 @@
 #include <QHideEvent>
 #include <QCheckBox>
 #include <QMessageBox>
+#include "inc/advancedsearchitem.h"
 
 SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
     : QDockWidget(parent, Qt::Widget)
@@ -128,29 +129,25 @@ bool SearchDock::isLoopSearchChecked() const
     return m_loopCheck->isChecked();
 }
 
-void SearchDock::addAdvSearchResult(QString& res, QTextCursor& cursor)
+void SearchDock::addAdvSearchResult(QTextCursor& cursor)
 {
-    m_advSearchList->addItem(res);
-    m_searchResultCursors.append(cursor);
+    auto item = new AdvancedSearchItem(cursor);
+    m_advSearchList->addItem(item);
+}
+
+void SearchDock::sortAdvSearchResult()
+{
+    m_advSearchList->sortItems();
 }
 
 void SearchDock::clearAdvSearchList()
 {
     m_advSearchList->clear();
-    m_searchResultCursors.clear();
 }
 
 void SearchDock::onResultDoubleClicked(QListWidgetItem* item)
 {
-    if (m_advSearchList->count() != m_searchResultCursors.length())
-    {
-        QMessageBox::critical(this, "ERROR!!!",
-                              "Something wrong happenned, please try to repeat the action!",
-                              QMessageBox::Ok);
-        return;
-    }
-    auto row = m_advSearchList->row(item);
-    const auto cursor = m_searchResultCursors.at(row);
+    const auto cursor = item->data(Qt::UserRole).value<QTextCursor>();
     emit searchResultSelected(cursor);
 }
 

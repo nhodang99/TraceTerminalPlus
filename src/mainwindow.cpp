@@ -15,8 +15,8 @@ MainWindow::MainWindow()
     setCentralWidget(m_tabWidget);
 
     // Live traceview
-    auto autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
-    auto remoteAddress = settings.value(Config::REMOTE_ADDRESS, QString("192.168.137.1")).toString();
+    bool autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
+    QString remoteAddress = settings.value(Config::REMOTE_ADDRESS, QString("192.168.137.1")).toString();
     m_liveView = new TraceView(true, autoscroll);
     m_liveView->setRemoteAddress(remoteAddress);
     m_tabWidget->addTab(m_liveView, "Live Trace");
@@ -25,8 +25,8 @@ MainWindow::MainWindow()
     m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->hide();
 
     // Search dock
-    auto caseSensitive = settings.value(Config::SEARCH_CASESENSITIVE, false).toBool();
-    auto loopSearch = settings.value(Config::SEARCH_LOOPSEARCH, false).toBool();
+    bool caseSensitive = settings.value(Config::SEARCH_CASESENSITIVE, false).toBool();
+    bool loopSearch = settings.value(Config::SEARCH_LOOPSEARCH, false).toBool();
     m_searchDock = new SearchDock(this, caseSensitive, loopSearch);
     addDockWidget(Qt::BottomDockWidgetArea, m_searchDock);
     m_searchDock->hide();
@@ -196,7 +196,7 @@ void MainWindow::onTabCloseRequested(int index)
 ///
 void MainWindow::onCurrentTabChanged(int index)
 {
-    auto tabName = m_tabWidget->tabText(index);
+    QString tabName = m_tabWidget->tabText(index);
     setWindowTitle(QString("TraceTerminal++ - %1").arg(tabName));
 }
 
@@ -218,22 +218,24 @@ void MainWindow::open()
     if (!fileDialog.exec())
         return;
 
-    auto filename = fileDialog.selectedFiles();
-    if (filename.isEmpty())
+    auto fileUrls = fileDialog.selectedFiles();
+    if (fileUrls.isEmpty())
         return;
 
-    // Only one selected allowed
-    openFile(filename[0]);
+    foreach(auto& url, fileUrls)
+    {
+        openFile(url);
+    }
 }
 
 ///
 /// \brief MainWindow::openFile
 /// \param url
 ///
-void MainWindow::openFile(QString& url)
+void MainWindow::openFile(const QString& url)
 {
     QFileInfo fileInfo(url);
-    for (auto i = 1; i < m_tabWidget->count(); ++i) // exclude live view
+    for (int i = 1; i < m_tabWidget->count(); ++i) // exclude live view
     {
         if (fileInfo.fileName() == m_tabWidget->tabText(i))
         {
@@ -273,7 +275,7 @@ void MainWindow::openFile(QString& url)
                 offlineView->append("<span style=\"color:orange\">Process aborted.</span>");
                 break;
             }
-            auto line = in.readLine();
+            QString line = in.readLine();
             TraceManager::instance().processTraceLine(line);
             offlineView->append(line);
             // Process event loop so that gui thread can be updated while appending the text still occuring
@@ -309,7 +311,7 @@ void MainWindow::showSearchDock(bool advanced)
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
     if (currentView->textCursor().hasSelection())
     {
-        auto selectedText = currentView->textCursor().selectedText();
+        QString selectedText = currentView->textCursor().selectedText();
         m_searchDock->setSearchText(selectedText);
         if (!advanced)
         {
@@ -344,57 +346,92 @@ void MainWindow::normalSearch(bool newSearch)
     // Find and highlight the next occurrence
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
     auto document = currentView->document();
-    auto text = m_searchDock->getSearchText();
-    auto isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
-    auto isLoopSearch = m_searchDock->isLoopSearchChecked();
-
-    // If new word searched: start finding from the beginning
-    // If continue to search the next result, search from the last found cursor
-    auto foundCursor = document->find(text, newSearch ? QTextCursor() : m_lastSearchCursor,
-                                      isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
-    if (foundCursor.isNull())
+    bool isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
+    bool isLoopSearch = m_searchDock->isLoopSearchChecked();
+    if (newSearch)
     {
-        // If loop search is not checked, keep the current word hightlight
-        if (!isLoopSearch)
-        {
-            statusBar()->showMessage("The end of document has been reached", 2000);
-            return;
-        }
+        m_lastSearchCursor = QTextCursor();
+    }
 
-        // Maybe the end of file, loop search checked
-        currentView->moveCursor(QTextCursor::Start);
-        foundCursor = document->find(text, currentView->textCursor(),
+    // Support searching multiple texts. Syntax: text1 -AND text2...
+    auto texts = m_searchDock->getSearchText().split(" -AND ");
+    QTextCursor foundCursor;
+    foreach (const QString& text, texts)
+    {
+        // If new word being searched: start finding from the beginning
+        // If continue to search the next result, search from the last found cursor
+        auto cursor = document->find(text,
+                                     m_lastSearchCursor,
                                      isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
-        if (!foundCursor.isNull())
+        if (!cursor.isNull()
+            && (foundCursor.isNull() || (!foundCursor.isNull() && cursor < foundCursor)))
         {
-            statusBar()->showMessage("The end of document has been reached, searching from the start", 2000);
-        }
-        else
-        {
-            return;
+            foundCursor = cursor;
         }
     }
 
-    // Save the found cursor so that we can continue to search from there later
-    m_lastSearchCursor = foundCursor;
+    if (foundCursor.isNull() && isLoopSearch)
+    {
+        statusBar()->showMessage("The end of document has been reached, searching from the start",
+                                 2000);
+        // Maybe the end of file, loop search checked, search from the beginning
+        foreach (const QString& text, texts)
+        {
+            auto tmpCursor = document->find(text,
+                                            QTextCursor(),
+                                            isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
+            if (!tmpCursor.isNull()
+                && (foundCursor.isNull() || (!foundCursor.isNull() && tmpCursor < foundCursor)))
+            {
+                foundCursor = tmpCursor;
+            }
+        }
+    }
+
+    if (foundCursor.isNull())
+    {
+        statusBar()->showMessage("The end of document has been reached",
+                                 2000);
+        return;
+    }
+
     // Highlight again the found text and extra highlight the next text found
+    if (newSearch)
+    {
+        clearOccurrencesHighlight();
+    }
     hightlightAllOccurrences();
     auto extraSelections = currentView->extraSelections();
 
-    int index = 0;
+    bool lastExtraFound = false;
+    bool newExtraFound = false;
+    // Must use the STL foreach here to modify the element
     for (auto& extra : extraSelections)
     {
-        if (extra.cursor == foundCursor)
+        if (lastExtraFound && newExtraFound) break;
+
+        if (!newExtraFound && extra.cursor == foundCursor)
         {
-            break;
+            extra.format.setBackground(QColor(Qt::green).lighter());
+            newExtraFound = true;
         }
-        index++;
+        if (!lastExtraFound && !m_lastSearchCursor.isNull())
+        {
+            if (extra.cursor == m_lastSearchCursor)
+            {
+                extra.format.setBackground(QColor(Qt::yellow).lighter(140));
+                lastExtraFound = true;
+            }
+        }
     }
-    extraSelections[index].format.setBackground(QColor(Qt::green).lighter());
+
     currentView->setExtraSelections(extraSelections);
     currentView->setTextCursor(foundCursor);
     currentView->moveCursor(QTextCursor::EndOfWord);
     currentView->moveCursor(QTextCursor::Right);
+
+    // Save the found cursor so that we can continue to search from there later
+    m_lastSearchCursor = foundCursor;
 }
 
 ///
@@ -406,38 +443,46 @@ void MainWindow::advancedSearch()
     progress.setWindowModality(Qt::WindowModal);
     progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
     progress.open();
-    progress.setValue(50); // Ugly trick...
-    auto text = m_searchDock->getSearchText();
-    auto isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
+    progress.setValue(0); // Ugly trick...
+
+    bool isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
     auto document = currentView->document();
+
+    progress.setValue(50);
+    auto texts = m_searchDock->getSearchText().split(" -AND ");
     QTextCursor prevCursor;
-    while (true)
+    foreach (const auto& text, texts)
     {
         if (progress.wasCanceled())
         {
-            statusBar()->showMessage("Advanced search aborted.", 2000);
             break;
         }
-
-        auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
-                                                                              : QTextDocument::FindFlag());
-        if (currentCursor.isNull())
+        prevCursor = QTextCursor();
+        while (true)
         {
-            break;
+            if (progress.wasCanceled())
+            {
+                statusBar()->showMessage("Advanced search aborted.", 2000);
+                break;
+            }
+
+            auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
+                                                                                  : QTextDocument::FindFlag());
+            if (currentCursor.isNull())
+            {
+                break;
+            }
+            m_searchDock->addAdvSearchResult(currentCursor);
+            prevCursor = currentCursor;
+            // Process event loop so that gui thread can be updated while searching
+            QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
         }
-        auto cursorOnLine = currentCursor;
-        cursorOnLine.select(QTextCursor::LineUnderCursor);
-        auto lineUnderCursor = cursorOnLine.selectedText();
-        auto lineNumber = QString::number(cursorOnLine.blockNumber() + 1);
-        auto resText = QString("Line %1\t%2").arg(lineNumber, lineUnderCursor);
-        m_searchDock->addAdvSearchResult(resText, currentCursor);
-        prevCursor = currentCursor;
-        // Process event loop so that gui thread can be updated while searching
-        QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
     }
-    progress.setValue(100);
+
+    m_searchDock->sortAdvSearchResult();
     m_viewInAdvSearch = currentView;
+    progress.setValue(100);
 }
 
 ///
@@ -482,30 +527,56 @@ void MainWindow::onSearchResultSelected(const QTextCursor cursor)
 ///
 void MainWindow::hightlightAllOccurrences()
 {
-    auto text = m_searchDock->getSearchText();
     auto isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
     auto document = currentView->document();
-    QTextCursor prevCursor;
     auto lighterYellow = QColor(Qt::yellow).lighter(140);
+    QTextCursor lastHighlightedCursor;
+    auto extraSelections = currentView->extraSelections();
 
-    QList<QTextEdit::ExtraSelection> extraSelections;
-    while (true)
+    // If there are extra selection before, start from the last cursor of the list
+    if (!extraSelections.isEmpty())
     {
-        auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
-                                                                              : QTextDocument::FindFlag());
-        if (currentCursor.isNull())
-        {
-            break;
-        }
-        QTextEdit::ExtraSelection extra;
-        extra.format.setBackground(lighterYellow);
-        extra.cursor = currentCursor;
-        extraSelections.append(extra);
-        prevCursor = currentCursor;
+//        qDebug() << "Last Highlight: " << extraSelections.last().cursor.position()
+//                                       << extraSelections.last().cursor.block().text();
+        lastHighlightedCursor = extraSelections.last().cursor;
     }
-    currentView->setExtraSelections(extraSelections);
-    m_isOccurrencesHighlighted = true;
+
+    // Support searching multiple texts. Syntax: text1 -AND text2...
+    auto texts = m_searchDock->getSearchText().split(" -AND ");
+    foreach (const QString& text, texts)
+    {
+        auto prevCursor = lastHighlightedCursor;
+        while (true)
+        {
+            auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
+                                                                                  : QTextDocument::FindFlag());
+            if (currentCursor.isNull())
+            {
+                break;
+            }
+            QTextEdit::ExtraSelection extra;
+            extra.format.setBackground(lighterYellow);
+            extra.cursor = currentCursor;
+            extraSelections.append(extra);
+            prevCursor = currentCursor;
+        }
+    }
+
+    if (!extraSelections.isEmpty())
+    {
+        // Sort by position, so that we can continue to highlight from the last cursor in the list next time
+        std::sort(extraSelections.begin(), extraSelections.end(), [&](const auto& a, const auto& b) {
+            if (!a.cursor.isNull() && !b.cursor.isNull())
+                return a.cursor < b.cursor;
+            return false;
+        });
+//        qDebug() << "Last after sort" << extraSelections.last().cursor.position()
+//                                      << extraSelections.last().cursor.block().text();
+
+        currentView->setExtraSelections(extraSelections);
+        m_isOccurrencesHighlighted = true;
+    }
 }
 
 ///

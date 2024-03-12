@@ -43,7 +43,7 @@ private:
     void onTabCloseRequested(int);
     void onCurrentTabChanged(int);
     void onSearchRequested(bool, bool);
-    void openFile(QString&);
+    void openFile(const QString&);
     void clearOccurrencesHighlight();
     void normalSearch(bool);
     void advancedSearch();

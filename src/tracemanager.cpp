@@ -54,7 +54,7 @@ void TraceManager::setCustoms(QStringList& list)
 ///
 void TraceManager::onNewDataReady(const QByteArray raw)
 {
-    auto data = QString(raw);
+    QString data = QString(raw);
     processAndSendTraceToView(data);
 }
 
@@ -116,7 +116,7 @@ void TraceManager::filterIncompletedFromData(QString& data)
         m_pendingData.clear();
     }
 
-    auto length = data.length();
+    int length = data.length();
     // Remove the last \r\n, it introduces a new blank line after apppending text
     if (data.endsWith("\r\n"))
     {
@@ -124,7 +124,7 @@ void TraceManager::filterIncompletedFromData(QString& data)
     }
     else
     {
-        auto idx = data.lastIndexOf("\r\n");
+        int idx = data.lastIndexOf("\r\n");
         if (idx != -1)
         {
             m_pendingData = data.right(length - (idx + 1) - 1);
