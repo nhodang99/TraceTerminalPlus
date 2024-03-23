@@ -13,6 +13,7 @@ SOURCES += \
     src/customhighlightdialog.cpp \
     src/mainwindow.cpp \
     src/searchdock.cpp \
+    src/tracehighlighter.cpp \
     src/tracemanager.cpp \
     src/traceserver.cpp \
     src/traceview.cpp \
@@ -24,6 +25,7 @@ HEADERS += \
     inc/customhighlightdialog.h \
     inc/mainwindow.h \
     inc/searchdock.h \
+    inc/tracehighlighter.h \
     inc/tracemanager.h \
     inc/traceserver.h \
     inc/traceview.h

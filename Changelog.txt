@@ -1,5 +1,15 @@
 ## Changelog ##
 
+V1.3
+Performance improved.
+
+- The time it takes to loading files is significantly decreased, although when working on large file it's a bit laggy (1 - 2 seconds) due to technical constraint
+- Highlight now take effect on existing traces to, not just the new one.
+- Add some dialog box to warn user about constraint before user take the actions
+- Scroll effect for incoming traces now working.
+- Change font to Consolas.
+
+V1.2
 - Now support multiple keywords seartch by syntax text1 -AND text2 -AND ...
 
 V1.1:

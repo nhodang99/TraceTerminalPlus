@@ -3,6 +3,7 @@
 
 #include <QTextEdit>
 #include <QHostAddress>
+#include "tracehighlighter.h"
 
 class TraceView : public QTextEdit
 {
@@ -13,8 +14,12 @@ public:
     TraceView(bool live = false, bool autoscroll = false);
 
     bool isAutoscroll() const { return m_autoScroll; }
-    void setRemoteAddress(QString&);
     QString getRemoteAddress() const;
+    bool isHighlightUpdated() const { return m_highlightUpdated; }
+    void updateHighlighting();
+    bool askedToUpdateHighlight() const { return m_askedToUpdateHighlight; }
+    void setAskedToUpdateHighlight();
+    void disableCustomHighlighting();
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
@@ -25,11 +30,12 @@ public slots:
     void clear();
     void clearUntilHere();
     void toggleAutoScroll();
-    void setCustomHiglights();
+    void setCustomHighlights();
     void promptAndSetRemoteInterface();
 
     void onSocketBindResult(QString, quint16, bool);
     void onNewTracesReady(QStringList);
+    void onHighlightingChanged();
 
 signals:
     void interfaceChangeRequested(QString);
@@ -42,6 +48,8 @@ private:
     QAction* toAction(QString&) const;
     void changeInterface(const QString&);
     void changePort();
+
+    QString toHtmlWithAdditionalFormats();
 
     //! [Actions]
     QAction* m_saveAct{nullptr};
@@ -67,6 +75,10 @@ private:
     quint16      m_currentPort{911}; // for context menu
     QString      m_remoteAddress{"192.168.137.1"}; // For context menu, managed on gui
     QString      m_waitingStep{"oooo0"};
+
+    TraceHighlighter* m_highlighter{nullptr};
+    bool         m_highlightUpdated{true};
+    bool         m_askedToUpdateHighlight{false};
 };
 
 #endif // TRACEVIEW_H

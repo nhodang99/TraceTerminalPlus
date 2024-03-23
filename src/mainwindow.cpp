@@ -4,8 +4,13 @@
 #include "inc/tracemanager.h"
 #include <QtWidgets>
 #include <QSettings>
+#include <QMessageBox>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QGuiApplication>
 
-MainWindow::MainWindow()
+MainWindow::MainWindow(TraceView* liveView, SearchDock* searchDock)
+    : m_liveView(liveView)
+    , m_searchDock(searchDock)
 {
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
 
@@ -15,21 +20,16 @@ MainWindow::MainWindow()
     setCentralWidget(m_tabWidget);
 
     // Live traceview
-    bool autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
-    QString remoteAddress = settings.value(Config::REMOTE_ADDRESS, QString("192.168.137.1")).toString();
-    m_liveView = new TraceView(true, autoscroll);
-    m_liveView->setRemoteAddress(remoteAddress);
     m_tabWidget->addTab(m_liveView, "Live Trace");
-    // Hide the close button of live view
+    // Hide the close button of live view - Crash if machine having close button on the left
     // @TODO: How to detect icon position?
     m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->hide();
 
     // Search dock
-    bool caseSensitive = settings.value(Config::SEARCH_CASESENSITIVE, false).toBool();
-    bool loopSearch = settings.value(Config::SEARCH_LOOPSEARCH, false).toBool();
-    m_searchDock = new SearchDock(this, caseSensitive, loopSearch);
+    m_searchDock->setParent(this);
     addDockWidget(Qt::BottomDockWidgetArea, m_searchDock);
     m_searchDock->hide();
+
 
     // Create app's menus and actions
     createActions();
@@ -46,14 +46,12 @@ MainWindow::MainWindow()
     setMinimumSize(480, 360);
     restoreGeometry(settings.value(Config::MAINWINDOW_GEOMETRY).toByteArray());
 
-    connect(m_tabWidget, &QTabWidget::tabCloseRequested,
-            this, &MainWindow::onTabCloseRequested);
-    connect(m_tabWidget, &QTabWidget::currentChanged,
-            this, &MainWindow::onCurrentTabChanged);
-    connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
-    connect(m_searchDock, &SearchDock::search, this, &MainWindow::onSearchRequested);
-    connect(m_searchDock, &SearchDock::searchDockHidden,
-            this, &MainWindow::onSearchDockHidden);
+    connect(this,         &MainWindow::highlightChanged,     m_liveView, &TraceView::onHighlightingChanged);
+    connect(m_tabWidget,  &QTabWidget::tabCloseRequested,    this, &MainWindow::onTabCloseRequested);
+    connect(m_tabWidget,  &QTabWidget::currentChanged,       this, &MainWindow::onCurrentTabChanged);
+    connect(m_liveView,   &TraceView::copyAvailable,         this, &MainWindow::onCopyAvailable);
+    connect(m_searchDock, &SearchDock::search,               this, &MainWindow::onSearchRequested);
+    connect(m_searchDock, &SearchDock::searchDockHidden,     this, &MainWindow::onSearchDockHidden);
     connect(m_searchDock, &SearchDock::searchResultSelected, this, &MainWindow::onSearchResultSelected);
 }
 
@@ -91,7 +89,7 @@ void MainWindow::createActions()
     m_copyAct = new QAction("Copy", this);
     m_copyAct->setShortcuts(QKeySequence::Copy);
     m_copyAct->setStatusTip("Copy the current selection's contents to the "
-                               "clipboard");
+                            "clipboard");
     m_copyAct->setEnabled(false);
     connect(m_copyAct, &QAction::triggered, this, &MainWindow::copy);
     connect(m_liveView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
@@ -191,6 +189,45 @@ void MainWindow::onTabCloseRequested(int index)
 }
 
 ///
+/// \brief MainWindow::copy
+///
+void MainWindow::copy()
+{
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->copy();
+}
+
+///
+/// \brief MainWindow::onCopyAvailable
+/// \param a
+///
+void MainWindow::onCopyAvailable(bool a)
+{
+    m_copyAct->setEnabled(a);
+}
+
+///
+/// \brief MainWindow::clear
+///
+void MainWindow::clear()
+{
+    auto currentView = (TraceView*)m_tabWidget->currentWidget();
+    currentView->clear();
+}
+
+///
+/// \brief MainWindow::about
+///
+void MainWindow::about()
+{
+    QMessageBox::about(this, "About TraceTerminal++",
+                       QString("<b>TraceTerminal++</b> offers view, search in file, export/import trace file in-place. "
+                       "Inspired by TraceTerminal app.<br>"
+                       "Version %1<br>"
+                       "Author: Nhodang").arg(QApplication::applicationVersion()));
+}
+
+///
 /// \brief MainWindow::onCurrentTabChanged
 /// \param index
 ///
@@ -198,6 +235,50 @@ void MainWindow::onCurrentTabChanged(int index)
 {
     QString tabName = m_tabWidget->tabText(index);
     setWindowTitle(QString("TraceTerminal++ - %1").arg(tabName));
+    m_tabWidget->tabBar()->setTabTextColor(m_lastTabIndex, QColor(Qt::black));
+    m_lastTabIndex = index;
+
+    auto pView = (TraceView*)m_tabWidget->widget(index);
+
+    if (pView->isHighlightUpdated())
+    {
+        return;
+    }
+    // Always update the liveview's highlighting
+    else if (!pView->isHighlightUpdated() && pView == m_liveView)
+    {
+        pView->updateHighlighting();
+        return;
+    }
+    else
+    {
+        m_tabWidget->tabBar()->setTabTextColor(index, QColor(Qt::red));
+        if (pView->askedToUpdateHighlight())
+        {
+            return;
+        }
+    }
+
+    QFuture<void> future;
+    int ret = QMessageBox::information(this, "Highlighting Rule",
+                                       "The highlighting rule of this view is not up-to-date.<br>"
+                                       "Do you want to reload it?<br>"
+                                       "<br>"
+                                       "<i>Note: This may take some times on large file</i>",
+                                       QMessageBox::Yes | QMessageBox::No,
+                                       QMessageBox::Yes);
+    switch (ret)
+    {
+    case QMessageBox::Yes:
+        future = QtConcurrent::run(pView, &TraceView::updateHighlighting);
+        m_tabWidget->tabBar()->setTabTextColor(index, QColor(Qt::black));
+        break;
+    case QMessageBox::No:
+        // Don't Save was clicked
+        break;
+    }
+    pView->setAskedToUpdateHighlight();
+    future.waitForFinished();
 }
 
 ///
@@ -249,46 +330,57 @@ void MainWindow::openFile(const QString& url)
     m_tabWidget->addTab(offlineView, fileInfo.fileName());
     m_tabWidget->setCurrentIndex(m_tabWidget->count() - 1);
     connect(offlineView, &TraceView::copyAvailable, this, &MainWindow::onCopyAvailable);
+    connect(this, &MainWindow::highlightChanged, offlineView, &TraceView::onHighlightingChanged);
+
+    QString data;
+    // Start read file concurrently
+    QFuture<bool> future = QtConcurrent::run(&TraceManager::instance(), &TraceManager::readFile, url, std::ref(data));
+
+    if (fileInfo.suffix() == "html")
+    {
+        int ret = QMessageBox::information(this, "Highlighting",
+                                           "This file is in rich text format (html) which might already <br>"
+                                           "have its own highlight.<br>"
+                                           "Do you want to add your highlighting rule? The highlight of <br>"
+                                           "the file is still kept but might be overwritten by your rule.<br>"
+                                           "<br>"
+                                           "<i>Note: This action cannot be undone. You'll need to reopen the file<br>"
+                                           "to change it</i>",
+                                           QMessageBox::Yes | QMessageBox::No,
+                                           QMessageBox::Yes);
+        switch (ret)
+        {
+        case QMessageBox::Yes:
+            break;
+        case QMessageBox::No:
+            disconnect(this, &MainWindow::highlightChanged, offlineView, &TraceView::onHighlightingChanged);
+            offlineView->disableCustomHighlighting();
+            break;
+        }
+    }
 
     QProgressDialog progress("Opening files...", "Abort", 0, 100, this);
-    progress.setWindowModality(Qt::WindowModal);
-    progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
     progress.open();
 
-    QFile file(url);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    // Join the thread
+    future.waitForFinished();
+    if (!future.result())
     {
-        qDebug() << "<span style=\"color:red\">Cannot open trace file</span>";
-        progress.close();
-        offlineView->append("Problem in opening the file.");
+        QMessageBox::critical(nullptr, "ERROR!!!", "Cannot open trace file");
         return;
     }
     progress.setValue(50);
+    QGuiApplication::processEvents(QEventLoop::ExcludeUserInputEvents | QEventLoop::ExcludeSocketNotifiers);
 
-    QTextStream in(&file);
-    if (fileInfo.suffix() == "txt")
+    if (fileInfo.suffix() == "html")
     {
-        while (!in.atEnd())
-        {
-            if (progress.wasCanceled())
-            {
-                offlineView->append("<span style=\"color:orange\">Process aborted.</span>");
-                break;
-            }
-            QString line = in.readLine();
-            TraceManager::instance().processTraceLine(line);
-            offlineView->append(line);
-            // Process event loop so that gui thread can be updated while appending the text still occuring
-            QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
-        }
+        offlineView->setHtml(data);
     }
     else
     {
-        // @TODO: read html is a bit laggy because using readAll, but
-        // append line by line is slower than setHtml
-        offlineView->setHtml(in.readAll());
+        offlineView->setPlainText(data);
     }
-    progress.setValue(100);
+    progress.close();
 }
 
 ///
@@ -537,8 +629,6 @@ void MainWindow::hightlightAllOccurrences()
     // If there are extra selection before, start from the last cursor of the list
     if (!extraSelections.isEmpty())
     {
-//        qDebug() << "Last Highlight: " << extraSelections.last().cursor.position()
-//                                       << extraSelections.last().cursor.block().text();
         lastHighlightedCursor = extraSelections.last().cursor;
     }
 
@@ -590,39 +680,20 @@ void MainWindow::clearOccurrencesHighlight()
 }
 
 ///
-/// \brief MainWindow::copy
+/// \brief TraceView::setCustomHighlights
 ///
-void MainWindow::copy()
+void MainWindow::setCustomHighlights(const QStringList& highlights)
 {
+    for (int i = 0; i < highlights.length(); ++i)
+    {
+        TraceHighlighter::addHighlightingRule(highlights.at(i),
+                                              Highlight::defaultCustomHighlights[i]);
+    }
+
+    emit highlightChanged();
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
-    currentView->copy();
-}
+    currentView->updateHighlighting();
 
-///
-/// \brief MainWindow::onCopyAvailable
-/// \param a
-///
-void MainWindow::onCopyAvailable(bool a)
-{
-    m_copyAct->setEnabled(a);
-}
-
-///
-/// \brief MainWindow::clear
-///
-void MainWindow::clear()
-{
-    auto currentView = (TraceView*)m_tabWidget->currentWidget();
-    currentView->clear();
-}
-
-///
-/// \brief MainWindow::about
-///
-void MainWindow::about()
-{
-    QMessageBox::about(this, "About TraceTerminal++",
-                       "<b>TraceTerminal++</b> offers view, search in file, export/import trace file in-place. "
-                          "Inspired by TraceTerminal app.<br>"
-                          "Author: Nhodang");
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    settings.setValue(Config::HIGHLIGHTS, highlights);
 }

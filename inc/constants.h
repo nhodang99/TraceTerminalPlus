@@ -13,17 +13,17 @@ const QString INTERFACE             = QStringLiteral("Server/interface");
 const QString PORT                  = QStringLiteral("Server/port");
 const QString REMOTE_ADDRESS        = QStringLiteral("Server/remoteAddress");
 const QString TRACEVIEW_AUTOSCROLL  = QStringLiteral("Traceview/autoscroll");
+const QString HIGHLIGHTS            = QStringLiteral("Traceview/highlights");
 const QString MAINWINDOW_GEOMETRY   = QStringLiteral("Mainwindow/geometry");
 const QString SEARCH_CASESENSITIVE  = QStringLiteral("Search/caseSensitive");
 const QString SEARCH_LOOPSEARCH     = QStringLiteral("Search/loopSearch");
-const QString CUSTOMS               = QStringLiteral("Custom/customs");
 }
 
 // @TODO: Fix non-POD warning
 namespace Highlight
 {
 const int CUSTOM_COLOR_NUMBER = 5;
-static const QStringList customs = {"magenta", "blue", "deepskyblue", "peru", "teal"};
+static const QStringList defaultCustomHighlights = {"magenta", "blue", "deepskyblue", "#6309bd", "darkgreen"};
 }
 
 // @TODO: Fix non-POD warning

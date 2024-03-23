@@ -1,21 +1,10 @@
 #include "inc/tracemanager.h"
-#include "inc/constants.h"
 #include <QSettings>
+#include <QFile>
 #include <QDebug>
 
 TraceManager::TraceManager()
 {
-    defaultColors = {
-        { "red",        " ERROR - " },
-        { "orange",     " WARNG - " },
-        { "purple",     " PANIC - " },
-        { "slategrey",  " PRINT - " },
-        { "black",      " TRACE - " },
-        };
-
-    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    auto customs = settings.value(Config::CUSTOMS, QStringList()).toStringList();
-    setCustoms(customs);
 }
 
 ///
@@ -29,26 +18,6 @@ TraceManager& TraceManager::instance()
 }
 
 ///
-/// \brief TraceManager::setCustoms
-/// \param list
-///
-void TraceManager::setCustoms(QStringList& list)
-{
-    if (list.length() != Highlight::CUSTOM_COLOR_NUMBER)
-    {
-        qDebug() << "custom highlight strings error" << list;
-        return;
-    }
-    for (int i = 0; i < Highlight::CUSTOM_COLOR_NUMBER; ++i)
-    {
-        customColors[Highlight::customs[i]] = list[i];
-    }
-
-    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    settings.setValue(Config::CUSTOMS, list);
-}
-
-///
 /// \brief TraceManager::onNewDataReady
 /// \param raw
 ///
@@ -56,45 +25,6 @@ void TraceManager::onNewDataReady(const QByteArray raw)
 {
     QString data = QString(raw);
     processAndSendTraceToView(data);
-}
-
-///
-/// \brief processTraceLine
-/// \param line
-///
-void TraceManager::processTraceLine(QString& line)
-{
-    QString tag;
-    const QString endTag = "</span>";
-    QMapIterator<QString, QString> it(defaultColors);
-    while (it.hasNext())
-    {
-        it.next();
-        if (!it.value().isEmpty() && line.contains(it.value()))
-        {
-            tag = QString("<span style=\"color:%1\">").arg(it.key());
-            break;
-        }
-    }
-
-    //  The custom highlight can override the default one
-    QMapIterator<QString, QString> cIt(customColors);
-    while (cIt.hasNext())
-    {
-        cIt.next();
-        if (!cIt.value().isEmpty() && line.contains(cIt.value()))
-        {
-            tag = QString("<span style=\"color:%1\">").arg(cIt.key());
-            break;
-        }
-    }
-    line.replace("\n", "<br>");
-    if (tag.isEmpty())
-    {
-        // If tag empty, use default black tag
-        tag = "<span style=\"color:black\">";
-    }
-    line = tag + line + endTag;
 }
 
 ///
@@ -136,9 +66,9 @@ void TraceManager::filterIncompletedFromData(QString& data)
             data.clear();
         }
     }
-//    qDebug() << "Return   :" << data;
-//    qDebug() << "Remaining:" << m_pendingData;
-//    qDebug() << "---------------------";
+    //    qDebug() << "Return   :" << data;
+    //    qDebug() << "Remaining:" << m_pendingData;
+    //    qDebug() << "---------------------";
 }
 
 ///
@@ -157,10 +87,28 @@ void TraceManager::processAndSendTraceToView(QString& data)
     {
         return;
     }
+
     auto traces = data.split("\r\n");
-    for (auto& trace : traces)
-    {
-        processTraceLine(trace);
-    }
     emit newTracesReady(traces);
+}
+
+///
+/// \brief TraceManager::readFile
+/// \param url
+/// \return
+///
+bool TraceManager::readFile(const QString& url, QString& data)
+{
+    data.clear();
+    QFile file(url);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        QTextStream in(&file);
+        while (!in.atEnd())
+        {
+            data += in.readLine() + "\r\n";
+        }
+        return true;
+    }
+    return false;
 }

@@ -1,11 +1,12 @@
 #include "inc/traceview.h"
 #include "inc/mainwindow.h"
 #include "inc/customhighlightdialog.h"
-#include "inc/tracemanager.h"
 #include "inc/constants.h"
 #include <QtWidgets>
 #include <QDialog>
 #include <QSettings>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QGuiApplication>
 
 TraceView::TraceView(bool live, bool autoscroll)
     : m_liveview(live)
@@ -15,16 +16,20 @@ TraceView::TraceView(bool live, bool autoscroll)
     setAcceptRichText(true);
     setLineWrapMode(QTextEdit::NoWrap);
     setStyleSheet("white-space: pre");
-    QFont font("Helvetica");
-    font.setPointSize(10);
+    QFont font("Consolas", 10, QFont::Medium);
     setFont(font);
+
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    m_remoteAddress = settings.value(Config::REMOTE_ADDRESS, QString("192.168.137.1")).toString();
+
+    m_highlighter = new TraceHighlighter(this->document());
 
     createActions();
 }
 
 TraceView::~TraceView()
 {
-
+    m_highlighter->deleteLater();
 }
 
 #ifndef QT_NO_CONTEXTMENU
@@ -114,8 +119,9 @@ void TraceView::createActions()
     connect(m_setPortAct, &QAction::triggered, this, &TraceView::changePort);
 
     m_setCustomHighlightAct = new QAction("Custom Highlights", this);
-    m_setCustomHighlightAct->setStatusTip("Set custom highlights for traces");
-    connect(m_setCustomHighlightAct, &QAction::triggered, this, &TraceView::setCustomHiglights);
+    m_setCustomHighlightAct->setStatusTip("Set custom highlights for traces. Avoid changing custom highlight when "
+                                          "receving traces, it can cause lagging to the tool.");
+    connect(m_setCustomHighlightAct, &QAction::triggered, this, &TraceView::setCustomHighlights);
 
     // Set interface and port action
     createSetHostActions();
@@ -228,17 +234,6 @@ void TraceView::promptAndSetRemoteInterface()
 }
 
 ///
-/// \brief TraceView::setRemoteAddress
-/// \param addr
-///
-void TraceView::setRemoteAddress(QString& addr)
-{
-    m_remoteAddress = addr;
-    QString setHostActTitle = QString("Remote interface... - [%1]").arg(addr);
-    m_setRemoteItfAct->setText(setHostActTitle);
-}
-
-///
 /// \brief getRemoteAddress
 /// \return
 ///
@@ -264,17 +259,19 @@ void TraceView::changePort()
 }
 
 ///
-/// \brief TraceView::setCustomHiglights
+/// \brief TraceView::setCustomHighlights
 ///
-void TraceView::setCustomHiglights()
+void TraceView::setCustomHighlights()
 {
     bool ok;
-    QStringList list = CustomHighlightDialog::getStrings(this, &ok);
-    if (ok)
+    QStringList highlights = CustomHighlightDialog::getStrings(nullptr, &ok);
+    if (!ok)
     {
-        TraceManager::instance().setCustoms(list);
+        return;
     }
-    // @TODO: update previous trace...
+
+    auto mainWindow = (MainWindow*)this->nativeParentWidget();
+    mainWindow->setCustomHighlights(highlights);
 }
 
 ///
@@ -296,14 +293,15 @@ void TraceView::save()
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
     {
-        qDebug() << "There is a problem creating the file";
+        QMessageBox::critical(this, "ERROR!!!", "Cannot creating the file");
         return;
     }
     QTextStream out(&file);
     if (filename.endsWith(".html"))
     {
-        out << toHtml();
-    } else if (filename.endsWith(".txt"))
+        out << toHtmlWithAdditionalFormats();
+    }
+    else
     {
         out << toPlainText();
     }
@@ -312,6 +310,60 @@ void TraceView::save()
     // Open saved directory
     QFileInfo newFileDir(file);
     QProcess::startDetached("explorer.exe", {"/select,", QDir::toNativeSeparators(newFileDir.absoluteFilePath())});
+}
+
+///
+/// \brief get the formatted string of the text in the layout
+///        QSyntaxHighlighter add additional formats to the text layout
+///        that a simple QTextEdit::toHtml() cannot save it
+/// \return text formatted html string
+///
+QString TraceView::toHtmlWithAdditionalFormats()
+{
+    auto text = toPlainText();
+
+    // Create a new document from all the selected text document.
+    QTextCursor cursor(document());
+    cursor.select(QTextCursor::Document);
+    QTextDocument* tempDocument(new QTextDocument);
+    Q_ASSERT(tempDocument);
+    QTextCursor tempCursor(tempDocument);
+
+    tempCursor.insertFragment(cursor.selection());
+    tempCursor.select(QTextCursor::Document);
+
+    // Apply the additional formats set by the syntax highlighter
+    QTextBlock start = document()->findBlock(cursor.selectionStart());
+    QTextBlock end = document()->findBlock(cursor.selectionEnd());
+    end = end.next();
+    int selectionStart = cursor.selectionStart();
+    int endOfDocument = tempDocument->characterCount() - 1;
+    for (QTextBlock current = start; current.isValid() and current != end; current = current.next()) {
+        const QTextLayout* layout(current.layout());
+
+        foreach (const QTextLayout::FormatRange &range, layout->formats()) {
+            int start = current.position() + range.start - selectionStart;
+            int end = start + range.length;
+            if (end <= 0 || start >= endOfDocument)
+                continue;
+            tempCursor.setPosition(qMax(start, 0));
+            tempCursor.setPosition(qMin(end, endOfDocument), QTextCursor::KeepAnchor);
+            tempCursor.setCharFormat(range.format);
+        }
+    }
+
+    // Reset the user states since they are not interesting
+    for(QTextBlock block = tempDocument->begin(); block.isValid(); block = block.next())
+        block.setUserState(-1);
+
+    // Make sure the text appears pre-formatted, and set the background we want.
+    tempCursor.select(QTextCursor::Document);
+
+    // Finally retreive the syntax higlighted and formatted html.
+    text = tempCursor.selection().toHtml();
+    delete tempDocument;
+
+    return text;
 }
 
 ///
@@ -345,7 +397,7 @@ void TraceView::toggleAutoScroll()
 {
     m_autoScroll = !m_autoScroll;
     m_setAutoScrollAct->setIconVisibleInMenu(m_autoScroll);
-    // up one line so that append does not auto scroll the view when cursor at the end of view
+    // @CHECK: up one line so that append does not auto scroll the view when cursor at the end of view
     if (!m_autoScroll)
     {
         moveCursor(QTextCursor::Up);
@@ -364,13 +416,25 @@ void TraceView::onNewTracesReady(QStringList traces)
     }
 
     // Append line by line help us using blockNumber() to get the line number when searching
+//    int count = 0;
     for (const auto& trace : traces)
     {
         append(trace);
-    }
-    if (m_autoScroll)
-    {
-        moveCursor(QTextCursor::End);
+        if (m_autoScroll)
+        {
+            moveCursor(QTextCursor::End);
+        }
+
+//        // The view only updated when control return to event loop
+//        // so we need to call processEvents every 2 lines to create a scroll effect for the incoming traces
+//        // Tested, the count reset when reach 2 produces the best effect
+//        count++;
+//        if (count == 2)
+//        {
+//            QGuiApplication::processEvents(QEventLoop::ExcludeUserInputEvents |
+//                                           QEventLoop::ExcludeSocketNotifiers);
+//            count = 0;
+//        }
     }
 
     // If user is searching text, highlight also incoming text
@@ -409,7 +473,7 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
         // Display current remote address right in the action
         // Eg.: Remote interface... - [192.168.137.1]
         QString setHostActTitle = QString("Remote interface... - [%1]")
-                                   .arg(m_remoteAddress);
+                                      .arg(m_remoteAddress);
         m_setRemoteItfAct->setText(setHostActTitle);
     }
     m_currentPort = port;
@@ -479,4 +543,33 @@ void TraceView::onSocketBindResult(QString addr, quint16 port, bool success)
     {
         moveCursor(QTextCursor::End);
     }
+}
+
+///
+/// \brief TraceView::onHighlightingChanged
+///
+void TraceView::onHighlightingChanged()
+{
+    m_highlightUpdated = false;
+    m_askedToUpdateHighlight = false;
+}
+
+void TraceView::updateHighlighting()
+{
+    if (!m_highlighter) return;
+
+    m_highlightUpdated = true;
+    m_askedToUpdateHighlight = true;
+    m_highlighter->rehighlight();
+}
+
+void TraceView::setAskedToUpdateHighlight()
+{
+    m_askedToUpdateHighlight = true;
+}
+
+void TraceView::disableCustomHighlighting()
+{
+    delete m_highlighter;
+    m_highlighter = nullptr;
 }

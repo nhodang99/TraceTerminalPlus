@@ -16,7 +16,8 @@ public:
     static QStringList getStrings(QWidget *parent, bool *ok = nullptr);
 
 private:
-    QList<QLineEdit*> fields;
+    QList<QLineEdit*> m_fields;
+    static QStringList m_lastHighlights;
 };
 
 #endif // CUSTOMHIGHLIGHTDIALOG_H

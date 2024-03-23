@@ -17,10 +17,11 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow();
+    MainWindow(TraceView*, SearchDock*);
     TraceView* getLiveView() const { return m_liveView; }
     void hightlightAllOccurrences();
     bool isOccurrencesHighlighted() { return m_isOccurrencesHighlighted; }
+    void setCustomHighlights(const QStringList&);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -36,6 +37,9 @@ public slots:
     void about();
     void onCopyAvailable(bool);
     void onSearchDockHidden();
+
+signals:
+    void highlightChanged();
 
 private:
     void createActions();
@@ -71,5 +75,6 @@ private:
     bool          m_isOccurrencesHighlighted {false};
     QTextCursor   m_lastSearchCursor;
     TraceView*    m_viewInAdvSearch{nullptr};
+    int           m_lastTabIndex{0};
 };
 #endif // MAINWINDOW_H
