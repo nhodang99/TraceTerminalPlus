@@ -32,6 +32,7 @@ public slots:
     void save();
     void clear();
     void clearUntilHere();
+
     void setCustomHighlights();
     void onHighlightingChanged();
 

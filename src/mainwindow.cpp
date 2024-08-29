@@ -9,6 +9,42 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include <QGuiApplication>
 
+///
+/// \brief Helper function
+///        Create regex to match the query, with operator | take precedence over +
+///        E.g: Syntax: text1 | text2 + text3..., we find line containing (text1) or line containing (both text2 and text3)
+/// \param query query to match
+/// \param caseSensitive whether the search is case sensitive
+/// \return list of regexes to match the block for the query
+///
+static QList<QRegularExpression> getRegexsForQuery(const QString& query, bool caseSensitive)
+{
+    const char* orSeparator = " | ";
+    const char* andSeparator = " + ";
+
+    QList<QRegularExpression> regexs;
+    QRegularExpression::PatternOption patternOption = caseSensitive ? QRegularExpression::NoPatternOption
+                                                                    : QRegularExpression::CaseInsensitiveOption;
+    auto orClauses = query.split(orSeparator);
+    foreach (const auto& orClause, orClauses)
+    {
+        QRegularExpression regex;
+        if (orClause.contains(andSeparator))
+        {
+            QStringList andKeywords = orClause.split(andSeparator);
+            QString keywordsAtSameLinePattern = andKeywords.join(".*?");
+            regex.setPattern(keywordsAtSameLinePattern);
+        }
+        else
+        {
+            regex.setPattern(orClause);
+        }
+        regex.setPatternOptions(patternOption);
+        regexs.append(regex);
+    }
+    return regexs;
+}
+
 MainWindow::MainWindow(LiveTraceView* liveView, SearchDock* searchDock)
     : m_liveView(liveView)
     , m_searchDock(searchDock)
@@ -60,6 +96,9 @@ MainWindow::MainWindow(LiveTraceView* liveView, SearchDock* searchDock)
     connect(m_searchDock, &SearchDock::search,               this, &MainWindow::onSearchRequested);
     connect(m_searchDock, &SearchDock::searchDockHidden,     this, &MainWindow::onSearchDockHidden);
     connect(m_searchDock, &SearchDock::searchResultSelected, this, &MainWindow::onSearchResultSelected);
+    connect(m_searchDock, &SearchDock::clearHighlight,       this, [=](){
+        this->clearOccurrencesHighlight();
+    });
 }
 
 ///
@@ -106,6 +145,10 @@ void MainWindow::createActions()
     m_clearAct->setStatusTip("Clear all the traces");
     connect(m_clearAct, &QAction::triggered, this, &MainWindow::clear);
 
+    m_guidelineAct = new QAction("How to use", this);
+    m_guidelineAct->setStatusTip("Show the application's guideline");
+    connect(m_guidelineAct, &QAction::triggered, this, &MainWindow::guideline);
+
     m_aboutAct = new QAction("About", this);
     m_aboutAct->setStatusTip("Show the application's About box");
     connect(m_aboutAct, &QAction::triggered, this, &MainWindow::about);
@@ -129,6 +172,7 @@ void MainWindow::createMenus()
     m_editMenu->addAction(m_clearAct);
 
     m_helpMenu = menuBar()->addMenu("Help");
+    m_helpMenu->addAction(m_guidelineAct);
     m_helpMenu->addAction(m_aboutAct);
 }
 
@@ -223,15 +267,59 @@ void MainWindow::clear()
 }
 
 ///
+/// \brief MainWindow::guideline
+///
+void MainWindow::guideline()
+{
+    auto text = QString("<ul>"
+                        "  <li>Access menu by right-clicking.</li>"
+                        "  <li>Set desired network interface and port that you want the tool to receive traces from.</li>"
+                        "  <li>To open a file:"
+                        "    <ul>"
+                        "      <li>File -> Open or simply Drag and drop trace file to app view.</li>"
+                        "      <li>File format .txt and .html is supported.</li>"
+                        "    </ul>"
+                        "  </li>"
+                        "  <li>To save a file:"
+                        "    <ul>"
+                        "      <li>File -> Save or use shortcut Ctrl+S.</li>"
+                        "      <li>File can be saved in .txt or .html format.</li>"
+                        "    </ul>"
+                        "  </li>"
+                        "  <li>Search shortcuts:"
+                        "    <ul>"
+                        "      <li>Ctrl+F to open normal search mode.</li>"
+                        "      <li>Ctrl+Shift+F to open advanced search mode.</li>"
+                        "    </ul>"
+                        "  </li>"
+                        "  <li>Multiple texts search:"
+                        "    <ul>"
+                        "      <li>Use separator \" + \" and \" | \" between texts (text1 | text2 + text3...) to search for multiple texts at once.</li>"
+                        "      <li>Operator | takes precedence over +.</li>"
+                        "      <li>Example: Syntax: text1 | text2 + text3, we find lines containing (text1) or lines containing (both text2 and text3).</li>"
+                        "    </ul>"
+                        "  </li>"
+                        "</ul>");
+
+    QMessageBox* msgBox = new QMessageBox("How to use", text,
+                                          QMessageBox::Information, 0, 0, 0, this);
+    msgBox->setAttribute(Qt::WA_DeleteOnClose);
+    QIcon icon = msgBox->windowIcon();
+    QSize size = icon.actualSize(QSize(64, 64));
+    msgBox->setIconPixmap(icon.pixmap(size));
+    msgBox->show();
+}
+
+///
 /// \brief MainWindow::about
 ///
 void MainWindow::about()
 {
     QMessageBox::about(this, "About TraceTerminal++",
                        QString("<b>TraceTerminal++</b> offers view, search in file, export/import trace file in-place. "
-                       "Inspired by TraceTerminal app.<br>"
-                       "Version %1<br>"
-                       "Author: Nhodang").arg(QApplication::applicationVersion()));
+                               "Inspired by TraceTerminal app.<br>"
+                               "Version %1<br>"
+                               "Author: Nhodang - ZenRod Team").arg(QApplication::applicationVersion()));
 }
 
 ///
@@ -411,7 +499,12 @@ void MainWindow::showSearchDock(bool advanced)
     if (currentView->textCursor().hasSelection())
     {
         QString selectedText = currentView->textCursor().selectedText();
-        m_searchDock->setSearchText(selectedText);
+        if (!m_searchDock->getQuery().isEmpty() &&
+            m_searchDock->getQuery() != selectedText)
+        {
+            clearOccurrencesHighlight();
+        }
+        m_searchDock->setQuery(selectedText);
         if (!advanced)
         {
             hightlightAllOccurrences();
@@ -444,46 +537,48 @@ void MainWindow::normalSearch(bool newSearch)
 {
     // Find and highlight the next occurrence
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
-    auto document = currentView->document();
-    bool isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     bool isLoopSearch = m_searchDock->isLoopSearchChecked();
     if (newSearch)
     {
         m_lastSearchCursor = QTextCursor();
+        clearOccurrencesHighlight();
     }
+    hightlightAllOccurrences();
 
-    // Support searching multiple texts. Syntax: text1 -AND text2...
-    auto texts = m_searchDock->getSearchText().split(" -AND ");
+    auto extraSelections = currentView->extraSelections();
     QTextCursor foundCursor;
-    foreach (const QString& text, texts)
-    {
-        // If new word being searched: start finding from the beginning
-        // If continue to search the next result, search from the last found cursor
-        auto cursor = document->find(text,
-                                     m_lastSearchCursor,
-                                     isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
-        if (!cursor.isNull()
-            && (foundCursor.isNull() || (!foundCursor.isNull() && cursor < foundCursor)))
-        {
-            foundCursor = cursor;
-        }
-    }
 
-    if (foundCursor.isNull() && isLoopSearch)
+    if (!extraSelections.isEmpty())
     {
-        statusBar()->showMessage("The end of document has been reached, searching from the start",
-                                 2000);
-        // Maybe the end of file, loop search checked, search from the beginning
-        foreach (const QString& text, texts)
+        if ((m_lastSearchCursor != extraSelections.last().cursor))
         {
-            auto tmpCursor = document->find(text,
-                                            QTextCursor(),
-                                            isCaseSensitive ? QTextDocument::FindCaseSensitively : QTextDocument::FindFlag());
-            if (!tmpCursor.isNull()
-                && (foundCursor.isNull() || (!foundCursor.isNull() && tmpCursor < foundCursor)))
+            if (m_lastSearchCursor.isNull())
             {
-                foundCursor = tmpCursor;
+                foundCursor = extraSelections.first().cursor;
+                extraSelections.first().format.setBackground(QColor(Qt::green).lighter());
             }
+            else
+            {
+                for (int i = 0; i < extraSelections.length(); ++i)
+                {
+                    if (extraSelections[i].cursor == m_lastSearchCursor)
+                    {
+                        foundCursor = extraSelections[i + 1].cursor;
+                        extraSelections[i].format.setBackground(QColor(Qt::yellow).lighter(140));
+                        extraSelections[i + 1].format.setBackground(QColor(Qt::green).lighter());
+                        break;
+                    }
+                }
+            }
+        }
+        else if (isLoopSearch)
+        {
+            qDebug() << "loop search";
+            statusBar()->showMessage("The end of document has been reached, searching from the start",
+                                     2000);
+            foundCursor = extraSelections.first().cursor;
+            extraSelections.last().format.setBackground(QColor(Qt::yellow).lighter(140));
+            extraSelections.first().format.setBackground(QColor(Qt::green).lighter());
         }
     }
 
@@ -492,36 +587,6 @@ void MainWindow::normalSearch(bool newSearch)
         statusBar()->showMessage("The end of document has been reached",
                                  2000);
         return;
-    }
-
-    // Highlight again the found text and extra highlight the next text found
-    if (newSearch)
-    {
-        clearOccurrencesHighlight();
-    }
-    hightlightAllOccurrences();
-    auto extraSelections = currentView->extraSelections();
-
-    bool lastExtraFound = false;
-    bool newExtraFound = false;
-    // Must use the STL foreach here to modify the element
-    for (auto& extra : extraSelections)
-    {
-        if (lastExtraFound && newExtraFound) break;
-
-        if (!newExtraFound && extra.cursor == foundCursor)
-        {
-            extra.format.setBackground(QColor(Qt::green).lighter());
-            newExtraFound = true;
-        }
-        if (!lastExtraFound && !m_lastSearchCursor.isNull())
-        {
-            if (extra.cursor == m_lastSearchCursor)
-            {
-                extra.format.setBackground(QColor(Qt::yellow).lighter(140));
-                lastExtraFound = true;
-            }
-        }
     }
 
     currentView->setExtraSelections(extraSelections);
@@ -544,39 +609,42 @@ void MainWindow::advancedSearch()
     progress.open();
     progress.setValue(0); // Ugly trick...
 
-    bool isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
     auto document = currentView->document();
 
     progress.setValue(50);
-    auto texts = m_searchDock->getSearchText().split(" -AND ");
-    QTextCursor prevCursor;
-    foreach (const auto& text, texts)
+
+    // Get the regexes to match the search query
+    auto regexs = getRegexsForQuery(m_searchDock->getQuery(),
+                                    m_searchDock->isCaseSensitiveChecked());
+    progress.setValue(75);
+
+    // Match the regular expression against the block's text
+    // Here we have each block is one line
+    for (QTextBlock block = document->begin(); block.isValid(); block = block.next())
     {
         if (progress.wasCanceled())
         {
             break;
         }
-        prevCursor = QTextCursor();
-        while (true)
-        {
-            if (progress.wasCanceled())
-            {
-                statusBar()->showMessage("Advanced search aborted.", 2000);
-                break;
-            }
 
-            auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
-                                                                                  : QTextDocument::FindFlag());
-            if (currentCursor.isNull())
+        foreach (const auto& regex, regexs)
+        {
+            QRegularExpressionMatchIterator matchIterator = regex.globalMatch(block.text());
+            while (matchIterator.hasNext())
             {
-                break;
+                // If there is a match, focus cursor the the actual word
+                auto match = matchIterator.next();
+                QTextCursor cursor(block);
+                cursor.setPosition(block.position() + match.capturedStart());
+                cursor.setPosition(block.position() + match.capturedEnd(), QTextCursor::KeepAnchor);
+
+                m_searchDock->addAdvSearchResult(cursor);
             }
-            m_searchDock->addAdvSearchResult(currentCursor);
-            prevCursor = currentCursor;
-            // Process event loop so that gui thread can be updated while searching
-            QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
         }
+
+        // Process event loop so that gui thread can be updated while searching
+        QGuiApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
     }
 
     m_searchDock->sortAdvSearchResult();
@@ -605,11 +673,15 @@ void MainWindow::onSearchResultSelected(const QTextCursor cursor)
 
     auto cursorOnLine = cursor;
     cursorOnLine.select(QTextCursor::LineUnderCursor);
+    // the last character of line is " ", do not count it
+    // See note in TraceManager::filterIncompletedFromRawData
+    cursorOnLine.movePosition(QTextCursor::PreviousCharacter);
     QTextEdit::ExtraSelection extraForLine;
     extraForLine.format.setBackground(QColor(Qt::gray).lighter(140));
     extraForLine.cursor = cursorOnLine;
     extraSelections.append(extraForLine);
-    // extraForWord must be set after extraForLine
+
+    // extraForWord MUST be set after extraForLine
     QTextEdit::ExtraSelection extraForWord;
     extraForWord.format.setBackground(QColor(Qt::green).lighter());
     extraForWord.cursor = cursor;
@@ -618,7 +690,7 @@ void MainWindow::onSearchResultSelected(const QTextCursor cursor)
     currentView->setExtraSelections(extraSelections);
     currentView->setTextCursor(cursor);
     currentView->moveCursor(QTextCursor::EndOfWord);
-    currentView->moveCursor(QTextCursor::Right);
+    currentView->moveCursor(QTextCursor::Left);
 }
 
 ///
@@ -626,50 +698,63 @@ void MainWindow::onSearchResultSelected(const QTextCursor cursor)
 ///
 void MainWindow::hightlightAllOccurrences()
 {
-    auto isCaseSensitive = m_searchDock->isCaseSensitiveChecked();
     auto currentView = (TraceView*)m_tabWidget->currentWidget();
-    auto document = currentView->document();
     auto lighterYellow = QColor(Qt::yellow).lighter(140);
-    QTextCursor lastHighlightedCursor;
     auto extraSelections = currentView->extraSelections();
 
-    // If there are extra selection before, start from the last cursor of the list
+    QTextCursor lastHighlightedCursor(currentView->document());
     if (!extraSelections.isEmpty())
     {
         lastHighlightedCursor = extraSelections.last().cursor;
     }
 
-    // Support searching multiple texts. Syntax: text1 -AND text2...
-    auto texts = m_searchDock->getSearchText().split(" -AND ");
-    foreach (const QString& text, texts)
+    // Get the regexes to match the search query
+    auto regexs = getRegexsForQuery(m_searchDock->getQuery(),
+                                    m_searchDock->isCaseSensitiveChecked());
+
+    auto currentBlock = lastHighlightedCursor.block();
+    QList<QTextEdit::ExtraSelection> tempExtraSelections;
+
+    for (QTextBlock block = currentBlock; block.isValid(); block = block.next())
     {
-        auto prevCursor = lastHighlightedCursor;
-        while (true)
+        foreach (const auto& regex, regexs)
         {
-            auto currentCursor = document->find(text, prevCursor, isCaseSensitive ? QTextDocument::FindCaseSensitively
-                                                                                  : QTextDocument::FindFlag());
-            if (currentCursor.isNull())
+            QRegularExpressionMatchIterator matchIterator = regex.globalMatch(block.text());
+            while (matchIterator.hasNext())
             {
-                break;
+                // If there is a match, focus cursor in the actual word
+                auto match = matchIterator.next();
+                QTextCursor cursor(block);
+                cursor.setPosition(block.position() + match.capturedStart());
+                cursor.setPosition(block.position() + match.capturedEnd(), QTextCursor::KeepAnchor);
+
+                // We find from the beginning of block so the catured might be already in the list before
+                if (cursor <= lastHighlightedCursor)
+                {
+                    continue;
+                }
+
+                QTextEdit::ExtraSelection extra;
+                extra.format.setBackground(lighterYellow);
+                extra.cursor = cursor;
+                tempExtraSelections.append(extra);
             }
-            QTextEdit::ExtraSelection extra;
-            extra.format.setBackground(lighterYellow);
-            extra.cursor = currentCursor;
-            extraSelections.append(extra);
-            prevCursor = currentCursor;
         }
     }
 
-    if (!extraSelections.isEmpty())
+    // We're sure that items of tempExtraSelections is larger than all items of current extraSelections
+    // So just sort the tempExtraSelections and then merge them to the curent one
+    if (!tempExtraSelections.isEmpty())
     {
         // Sort by position, so that we can continue to highlight from the last cursor in the list next time
-        std::sort(extraSelections.begin(), extraSelections.end(), [&](const auto& a, const auto& b) {
+        std::sort(tempExtraSelections.begin(), tempExtraSelections.end(), [&](const auto& a, const auto& b) {
             if (!a.cursor.isNull() && !b.cursor.isNull())
                 return a.cursor < b.cursor;
             return false;
         });
-//        qDebug() << "Last after sort" << extraSelections.last().cursor.position()
-//                                      << extraSelections.last().cursor.block().text();
+        extraSelections.append(tempExtraSelections);
+        // qDebug() << "Last after sort" << extraSelections.last().cursor.position()
+        //                               << extraSelections.last().cursor.block().text();
 
         currentView->setExtraSelections(extraSelections);
         m_isOccurrencesHighlighted = true;

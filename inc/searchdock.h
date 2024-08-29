@@ -12,16 +12,18 @@ class QCheckBox;
 class QPushButton;
 QT_END_NAMESPACE
 
-
 class SearchDock : public QDockWidget
 {
     Q_OBJECT
 public:
     SearchDock(QWidget* parent = nullptr);
-    QString getSearchText() const;
-    void setSearchText(QString&);
+
+    QString getQuery() const;
+    void setQuery(QString&);
+
     bool isCaseSensitiveChecked() const;
     bool isLoopSearchChecked() const;
+
     void addAdvSearchResult(QTextCursor&);
     void show(bool advanced = false);
     void sortAdvSearchResult();
@@ -38,17 +40,19 @@ signals:
     void search(bool advanced = false, bool newSearch = true);
     void searchDockHidden();
     void searchResultSelected(const QTextCursor);
+    void clearHighlight();
 
 private:
     void clearAdvSearchList();
 
     QPushButton*        m_searchButton;
     QPushButton*        m_advSearchButton;
+    QPushButton*        m_clearHighlightButton;
     QLineEdit*          m_lineEdit;
     QListWidget*        m_advSearchList;
     QCheckBox*          m_caseSensitiveCheck;
     QCheckBox*          m_loopCheck;
-    QString             m_lastNormalSearchText;
+    QString             m_lastQuery;
 };
 
 #endif // SEARCHDOCK_H

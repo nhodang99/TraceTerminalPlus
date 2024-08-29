@@ -90,7 +90,7 @@ void TraceView::createTraceActions()
     m_searchAct = new QAction("Search...", this);
     m_searchAct->setShortcuts(QKeySequence::Find);
     m_searchAct->setStatusTip("Search text in the current view. Shortcut Ctrl+F for normal search, Ctrl+Shift+F for advanced search. "
-                              "Search multiple texts with syntax <text1 -AND text2...>");
+                              "Search multiple texts with syntax <text1 | text2 + text3...>");
     connect(m_searchAct, &QAction::triggered, this, [=](){
         auto mainWindow = (MainWindow*)this->nativeParentWidget();
         mainWindow->showSearchDock();

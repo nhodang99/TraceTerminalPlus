@@ -100,8 +100,13 @@ void TraceManager::filterIncompletedFromRawData()
     if (!processedData.isEmpty())
     {
         QStringList pendingDataArr = processedData.split("\r\n");
-        for (const auto& data : pendingDataArr)
+        for (auto& data : pendingDataArr)
         {
+            // TraceView's search function use ExtraSelection to highlight the keyword, but if the highlighted word
+            // is at the end of line, 'QTextEdit::append' will unexpectedly add highlight also the following lines,
+            // to avoid it, add a space as a workaround
+            // @TODO: Find a better solution
+            data += " ";
             m_pendingTraces.enqueue(data);
         }
     }

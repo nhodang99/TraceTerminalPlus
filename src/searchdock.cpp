@@ -33,6 +33,7 @@ SearchDock::SearchDock(QWidget* parent)
     m_loopCheck->setChecked(loopSearch);
     m_searchButton = new QPushButton("Search");
     m_advSearchButton = new QPushButton("Advanced search");
+    m_clearHighlightButton = new QPushButton("Clear Highlights");
 
     QHBoxLayout* searchRowLayout = new QHBoxLayout;
     searchRowLayout->setSpacing(5);
@@ -42,6 +43,7 @@ SearchDock::SearchDock(QWidget* parent)
     searchRowLayout->addWidget(m_loopCheck);
     searchRowLayout->addWidget(m_searchButton);
     searchRowLayout->addWidget(m_advSearchButton);
+    searchRowLayout->addWidget(m_clearHighlightButton);
 
     m_advSearchList = new QListWidget;
     m_advSearchList->hide();
@@ -70,11 +72,18 @@ SearchDock::SearchDock(QWidget* parent)
     connect(m_advSearchButton, &QPushButton::clicked, this, &SearchDock::onAdvSearchClicked);
     connect(m_advSearchList, &QListWidget::itemDoubleClicked,
             this, &SearchDock::onResultDoubleClicked);
+    connect(m_clearHighlightButton, &QPushButton::clicked, this, [=](){
+        emit clearHighlight();
+    });
+    connect(m_caseSensitiveCheck, &QCheckBox::stateChanged, this, [=](int /*state*/){
+        // Case sensitive option changed, search the keyword again
+        m_lastQuery.clear();
+    });
 }
 
 void SearchDock::hideEvent(QHideEvent* event)
 {
-    m_lastNormalSearchText.clear();
+    m_lastQuery.clear();
     emit searchDockHidden();
     event->accept();
 }
@@ -84,18 +93,17 @@ void SearchDock::onSearchClicked()
     QString text = m_lineEdit->text();
     if (text.isEmpty())
     {
-        m_lastNormalSearchText.clear();
+        m_lastQuery.clear();
         return;
     }
-    emit search(false, m_lastNormalSearchText != text);
-    m_lastNormalSearchText = text;
+    emit search(false, m_lastQuery != text);
     m_searchButton->setDefault(true);
     m_advSearchButton->setDefault(false);
+    m_lastQuery = text;
 }
 
 void SearchDock::onAdvSearchClicked()
 {
-    m_lastNormalSearchText.clear();
     if (m_advSearchList->isHidden())
     {
         m_advSearchList->show();
@@ -109,9 +117,11 @@ void SearchDock::onAdvSearchClicked()
     emit search(true);
     m_searchButton->setDefault(false);
     m_advSearchButton->setDefault(true);
+    // We don't care about last query in advanced search, always search all again
+    m_lastQuery.clear();
 }
 
-QString SearchDock::getSearchText() const
+QString SearchDock::getQuery() const
 {
     if (!m_lineEdit)
     {
@@ -120,7 +130,7 @@ QString SearchDock::getSearchText() const
     return m_lineEdit->text();
 }
 
-void SearchDock::setSearchText(QString& text)
+void SearchDock::setQuery(QString& text)
 {
     m_lineEdit->setText(text);
 }

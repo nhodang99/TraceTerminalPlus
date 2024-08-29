@@ -18,6 +18,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(LiveTraceView*, SearchDock*);
+
     inline bool isOccurrencesHighlighted() const;
     void hightlightAllOccurrences();
     void setCustomHighlights(const QStringList&);
@@ -30,11 +31,12 @@ protected:
 public slots:
     void open();
     void save();
-    void showSearchDock(bool advanced = false);
     void copy();
     void clear();
+    void guideline();
     void about();
     void onCopyAvailable(bool);
+    void showSearchDock(bool advanced = false);
     void onSearchDockHidden();
 
 signals:
@@ -43,25 +45,32 @@ signals:
 private:
     void createActions();
     void createMenus();
+
     void onTabCloseRequested(int);
     void onCurrentTabChanged(int);
+
     void onSearchRequested(bool, bool);
-    void openFile(const QString&);
-    void clearOccurrencesHighlight();
     void normalSearch(bool);
     void advancedSearch();
     void onSearchResultSelected(const QTextCursor);
 
-    //! [Actions]
+    void openFile(const QString&);
+    void clearOccurrencesHighlight();
+
+    //! [Menus]
     QMenu* m_fileMenu;
     QMenu* m_editMenu;
     QMenu* m_helpMenu;
+    //! [Menus]
+
+    //! [Actions]
     QAction* m_openAct;
     QAction* m_saveAct;
     QAction* m_searchAct;
     QAction* m_copyAct;
     QAction* m_clearAct;
     QAction* m_exitAct;
+    QAction* m_guidelineAct;
     QAction* m_aboutAct;
     //! [Actions]
 
@@ -73,10 +82,9 @@ private:
     //! [Attr]
     bool           m_isOccurrencesHighlighted {false};
     QTextCursor    m_lastSearchCursor;
-    TraceView*     m_viewInAdvSearch{nullptr};
-    int            m_lastTabIndex{0};
+    TraceView*     m_viewInAdvSearch {nullptr};
+    int            m_lastTabIndex {0};
 };
-
 
 inline bool MainWindow::isOccurrencesHighlighted() const
 {

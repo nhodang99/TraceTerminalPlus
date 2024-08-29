@@ -87,6 +87,7 @@ TraceServer::~TraceServer()
     }
     delete m_udpSocket;
     m_udpSocket = nullptr;
+
     // Serial port
     if (m_serial->isOpen())
     {

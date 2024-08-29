@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     app.setOrganizationName("None");
     app.setOrganizationDomain("None");
     app.setApplicationName("TraceTerminal++");
-    app.setApplicationVersion("1.3");
+    app.setApplicationVersion("1.4");
     app.setAttribute(Qt::AA_DontShowIconsInMenus);
 
     // initialize objects

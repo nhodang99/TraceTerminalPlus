@@ -133,7 +133,7 @@ void LiveTraceView::toggleAutoScroll()
 void LiveTraceView::onNewTracesReady(QStringList traces)
 {
     //qDebug() << traces;
-    foreach (auto trace, traces)
+    foreach (auto& trace, traces)
     {
         // Append line by line help us using blockNumber() to get the line number when searching
         append(trace);

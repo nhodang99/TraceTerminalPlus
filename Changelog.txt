@@ -1,5 +1,11 @@
 ## Changelog ##
 
+V1.4:
+- Use regex to search, optimize seearching feature
+- Add guideline option in toolbar
+- Add Clear Highlights button in search dock
+- Fix some exisiting bug
+
 V1.3
 Performance improved.
 
