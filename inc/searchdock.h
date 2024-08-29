@@ -17,7 +17,7 @@ class SearchDock : public QDockWidget
 {
     Q_OBJECT
 public:
-    SearchDock(QWidget*, bool, bool);
+    SearchDock(QWidget* parent = nullptr);
     QString getSearchText() const;
     void setSearchText(QString&);
     bool isCaseSensitiveChecked() const;

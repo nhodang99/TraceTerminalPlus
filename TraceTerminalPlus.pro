@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     src/advancedsearchitem.cpp \
     src/customhighlightdialog.cpp \
+    src/livetraceview.cpp \
     src/mainwindow.cpp \
     src/searchdock.cpp \
     src/tracehighlighter.cpp \
@@ -23,6 +24,7 @@ HEADERS += \
     inc/advancedsearchitem.h \
     inc/constants.h \
     inc/customhighlightdialog.h \
+    inc/livetraceview.h \
     inc/mainwindow.h \
     inc/searchdock.h \
     inc/tracehighlighter.h \

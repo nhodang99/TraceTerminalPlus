@@ -1,11 +1,10 @@
 #include "inc/mainwindow.h"
-#include "inc/constants.h"
 #include "inc/traceserver.h"
 #include "inc/tracemanager.h"
 #include "inc/searchdock.h"
 #include <QApplication>
 #include <QSettings>
-//#include <QThread>
+#include <QThread>
 
 int main(int argc, char *argv[])
 {
@@ -16,36 +15,32 @@ int main(int argc, char *argv[])
     app.setApplicationVersion("1.3");
     app.setAttribute(Qt::AA_DontShowIconsInMenus);
 
-    // Read settings
-    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
-    bool autoscroll = settings.value(Config::TRACEVIEW_AUTOSCROLL, true).toBool();
-    bool caseSensitive = settings.value(Config::SEARCH_CASESENSITIVE, false).toBool();
-    bool loopSearch = settings.value(Config::SEARCH_LOOPSEARCH, false).toBool();
-
     // initialize objects
     TraceServer& server = TraceServer::instance();
-    TraceManager& traceMgr = TraceManager::instance();
-    auto liveView = new TraceView(true, autoscroll);
-    auto searchDock = new SearchDock(nullptr, caseSensitive, loopSearch);
+    TraceManager& traceManager = TraceManager::instance();
+
+    auto liveView = new LiveTraceView;
+    auto searchDock = new SearchDock;
     MainWindow mainWindow(liveView, searchDock);
 
-    // Connect server to trace view
+    // Connect server to live view
     QObject::connect(&server, &TraceServer::bindResult,
-                     mainWindow.getLiveView(), &TraceView::onSocketBindResult);
-    // Connect trace view to server
-    QObject::connect(mainWindow.getLiveView(), &TraceView::interfaceChangeRequested,
+                     liveView, &LiveTraceView::onSocketBindResult);
+    // Connect live view to server
+    QObject::connect(liveView, &LiveTraceView::interfaceChangeRequested,
                      &server, &TraceServer::onInterfaceChangeRequested);
-    QObject::connect(mainWindow.getLiveView(), &TraceView::portChangeRequested,
+    QObject::connect(liveView, &LiveTraceView::portChangeRequested,
                      &server, &TraceServer::onPortChangeRequested);
 
     // Connect server to trace manager
     QObject::connect(&server, &TraceServer::newDataReady,
-                     &traceMgr, &TraceManager::onNewDataReady);
-    // Connect manager to trace view
-    QObject::connect(&traceMgr, &TraceManager::newTracesReady,
-                     mainWindow.getLiveView(), &TraceView::onNewTracesReady, Qt::QueuedConnection);
+                     &traceManager, &TraceManager::onNewDataReady, Qt::QueuedConnection);
+    // Connect manager to live view
+    QObject::connect(&traceManager, &TraceManager::newTracesReady,
+                     liveView, &LiveTraceView::onNewTracesReady, Qt::QueuedConnection);
 
     server.init();
     mainWindow.show();
-    return app.exec();
+    int ret = app.exec();
+    return ret;
 }

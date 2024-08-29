@@ -3,13 +3,17 @@
 
 #include <QObject>
 #include <QString>
-//#include <QMutex>
+#include <QMutex>
+#include <QQueue>
+#include <QTimer>
+#include <QThread>
 
 class TraceManager : public QObject
 {
     Q_OBJECT
 public:
     static TraceManager& instance();
+    ~TraceManager();
     bool readFile(const QString& url, QString&);
 
 public slots:
@@ -20,11 +24,19 @@ signals:
 
 private:
     TraceManager();
-    void filterIncompletedFromData(QString& data);
-    void processAndSendTraceToView(QString& data);
+    void filterIncompletedFromRawData();
+    void sendPendingDataToView();
 
-    //    QMutex      m_mutex;
-    QString                m_pendingData;
+    // Methods for async process
+    void processAndSendTraceToViewAsync();
+
+    QMutex          m_mutex;
+    QString         m_rawData;
+
+    QTimer*         m_timer{nullptr};
+    QQueue<QString> m_pendingTraces;
+
+    QThread         m_sendTraceThread;
 };
 
 #endif // TRACEMANAGER_H

@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "traceview.h"
+#include "livetraceview.h"
 #include "searchdock.h"
 
 QT_BEGIN_NAMESPACE
@@ -17,10 +17,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(TraceView*, SearchDock*);
-    TraceView* getLiveView() const { return m_liveView; }
+    MainWindow(LiveTraceView*, SearchDock*);
+    inline bool isOccurrencesHighlighted() const;
     void hightlightAllOccurrences();
-    bool isOccurrencesHighlighted() { return m_isOccurrencesHighlighted; }
     void setCustomHighlights(const QStringList&);
 
 protected:
@@ -67,14 +66,21 @@ private:
     //! [Actions]
 
     //! [Widgets]
-    QTabWidget*   m_tabWidget {nullptr};
-    TraceView*    m_liveView {nullptr};
-    SearchDock*   m_searchDock {nullptr};
+    QTabWidget*    m_tabWidget {nullptr};
+    LiveTraceView* m_liveView {nullptr};
+    SearchDock*    m_searchDock {nullptr};
 
     //! [Attr]
-    bool          m_isOccurrencesHighlighted {false};
-    QTextCursor   m_lastSearchCursor;
-    TraceView*    m_viewInAdvSearch{nullptr};
-    int           m_lastTabIndex{0};
+    bool           m_isOccurrencesHighlighted {false};
+    QTextCursor    m_lastSearchCursor;
+    TraceView*     m_viewInAdvSearch{nullptr};
+    int            m_lastTabIndex{0};
 };
+
+
+inline bool MainWindow::isOccurrencesHighlighted() const
+{
+    return m_isOccurrencesHighlighted;
+}
+
 #endif // MAINWINDOW_H

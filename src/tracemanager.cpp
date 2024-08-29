@@ -2,9 +2,29 @@
 #include <QSettings>
 #include <QFile>
 #include <QDebug>
+#include <QThread>
+
+namespace
+{
+const int LOAD_TRACE_TIME = 10;
+const int TRACE_LINE_PER_TIME = 4;
+}
 
 TraceManager::TraceManager()
 {
+    m_timer = new QTimer;
+    m_timer->moveToThread(&m_sendTraceThread);
+    m_timer->setInterval(LOAD_TRACE_TIME);
+    connect(&m_sendTraceThread, SIGNAL(started()), m_timer, SLOT(start()));
+    connect(&m_sendTraceThread, SIGNAL(finished()), m_timer, SLOT(stop()));
+    connect(m_timer, &QTimer::timeout, this, &TraceManager::processAndSendTraceToViewAsync);
+    m_sendTraceThread.start();
+}
+
+TraceManager::~TraceManager()
+{
+    m_sendTraceThread.quit();
+    m_sendTraceThread.wait();
 }
 
 ///
@@ -23,73 +43,85 @@ TraceManager& TraceManager::instance()
 ///
 void TraceManager::onNewDataReady(const QByteArray raw)
 {
-    QString data = QString(raw);
-    processAndSendTraceToView(data);
-}
-
-///
-/// \brief TraceManager::filterIncompletedFromData
-/// \param data
-///
-void TraceManager::filterIncompletedFromData(QString& data)
-{
-    if (data.isEmpty())
-    {
-        qDebug() << "Empty incoming data";
-    }
-
-    // Last incoming data is not always a complete sentence
-    // prepend the incompleted data to the incoming one if has
-    if (!m_pendingData.isEmpty())
-    {
-        data = m_pendingData + data;
-        m_pendingData.clear();
-    }
-
-    int length = data.length();
-    // Remove the last \r\n, it introduces a new blank line after apppending text
-    if (data.endsWith("\r\n"))
-    {
-        data = data.left(length - 2);
-    }
-    else
-    {
-        int idx = data.lastIndexOf("\r\n");
-        if (idx != -1)
-        {
-            m_pendingData = data.right(length - (idx + 1) - 1);
-            data = data.left(idx);
-        }
-        else
-        {
-            m_pendingData = data;
-            data.clear();
-        }
-    }
-    //    qDebug() << "Return   :" << data;
-    //    qDebug() << "Remaining:" << m_pendingData;
-    //    qDebug() << "---------------------";
+    // qDebug() << QString(raw);
+    m_rawData += QString(raw);
 }
 
 ///
 /// \brief TraceManager::processAndSendTraceToView
 /// \param data
 ///
-void TraceManager::processAndSendTraceToView(QString& data)
+void TraceManager::processAndSendTraceToViewAsync()
 {
-    if (data.isEmpty())
+    QMutexLocker lock(&m_mutex);
+
+    filterIncompletedFromRawData();
+    sendPendingDataToView();
+}
+
+///
+/// \brief TraceManager::filterIncompletedFromData
+/// Last incoming data is not always a complete sentence
+///
+/// \param data
+///
+void TraceManager::filterIncompletedFromRawData()
+{
+    if (m_rawData.isEmpty())
     {
+        //qDebug() << "Empty incoming data";
         return;
     }
 
-    filterIncompletedFromData(data);
-    if (data.isEmpty())
+    QString processedData;
+
+    int length = m_rawData.length();
+    // Remove the last \r\n, it introduces a new blank line after apppending text
+    if (m_rawData.endsWith("\r\n"))
     {
-        return;
+        processedData = m_rawData.left(length - 2);
+        m_rawData.clear();
+    }
+    else
+    {
+        int idx = m_rawData.lastIndexOf("\r\n");
+        if (idx != -1)
+        {
+            processedData = m_rawData.left(idx);
+            m_rawData = m_rawData.right(length - (idx + 1) - 1);
+        }
+        else
+        {
+            // Keep m_rawData as it is
+        }
     }
 
-    auto traces = data.split("\r\n");
-    emit newTracesReady(traces);
+    // Now append processedData into queue
+    if (!processedData.isEmpty())
+    {
+        QStringList pendingDataArr = processedData.split("\r\n");
+        for (const auto& data : pendingDataArr)
+        {
+            m_pendingTraces.enqueue(data);
+        }
+    }
+}
+
+void TraceManager::sendPendingDataToView()
+{
+    QStringList tracesToSend;
+    for (int i = 0; i < TRACE_LINE_PER_TIME; ++i)
+    {
+        if (m_pendingTraces.isEmpty())
+        {
+            break;
+        }
+        tracesToSend.append(m_pendingTraces.dequeue());
+    }
+    if (!tracesToSend.isEmpty())
+    {
+        emit newTracesReady(tracesToSend);
+    }
 }
 
 ///
@@ -104,10 +136,7 @@ bool TraceManager::readFile(const QString& url, QString& data)
     if (file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QTextStream in(&file);
-        while (!in.atEnd())
-        {
-            data += in.readLine() + "\r\n";
-        }
+        data = in.readAll();
         return true;
     }
     return false;

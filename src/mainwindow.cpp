@@ -2,13 +2,14 @@
 #include "inc/constants.h"
 #include "inc/searchdock.h"
 #include "inc/tracemanager.h"
+#include "inc/tracehighlighter.h"
 #include <QtWidgets>
 #include <QSettings>
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QGuiApplication>
 
-MainWindow::MainWindow(TraceView* liveView, SearchDock* searchDock)
+MainWindow::MainWindow(LiveTraceView* liveView, SearchDock* searchDock)
     : m_liveView(liveView)
     , m_searchDock(searchDock)
 {
@@ -21,9 +22,15 @@ MainWindow::MainWindow(TraceView* liveView, SearchDock* searchDock)
 
     // Live traceview
     m_tabWidget->addTab(m_liveView, "Live Trace");
-    // Hide the close button of live view - Crash if machine having close button on the left
-    // @TODO: How to detect icon position?
-    m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->hide();
+    // Hide the close button of live view
+    if (m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide))
+    {
+        m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->hide();
+    }
+    else if (m_tabWidget->tabBar()->tabButton(0, QTabBar::RightSide))
+    {
+        m_tabWidget->tabBar()->tabButton(0, QTabBar::LeftSide)->hide();
+    }
 
     // Search dock
     m_searchDock->setParent(this);
@@ -133,7 +140,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
     settings.setValue(Config::MAINWINDOW_GEOMETRY, saveGeometry());
-    settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoscroll());
+    settings.setValue(Config::TRACEVIEW_AUTOSCROLL, m_liveView->isAutoScrollEnabled());
     settings.setValue(Config::REMOTE_ADDRESS, m_liveView->getRemoteAddress());
     settings.setValue(Config::SEARCH_CASESENSITIVE, m_searchDock->isCaseSensitiveChecked());
     settings.setValue(Config::SEARCH_LOOPSEARCH, m_searchDock->isLoopSearchChecked());
@@ -180,11 +187,11 @@ void MainWindow::onTabCloseRequested(int index)
     auto pView = m_tabWidget->widget(index);
     if (pView)
     {
-        pView->deleteLater();
         if (m_viewInAdvSearch == pView)
         {
             m_viewInAdvSearch = nullptr;
         }
+        pView->deleteLater();
     }
 }
 
@@ -253,7 +260,7 @@ void MainWindow::onCurrentTabChanged(int index)
     else
     {
         m_tabWidget->tabBar()->setTabTextColor(index, QColor(Qt::red));
-        if (pView->askedToUpdateHighlight())
+        if (pView->wasHighlightUpdateRequested())
         {
             return;
         }
@@ -277,7 +284,7 @@ void MainWindow::onCurrentTabChanged(int index)
         // Don't Save was clicked
         break;
     }
-    pView->setAskedToUpdateHighlight();
+    pView->setHighlightUpdateRequested();
     future.waitForFinished();
 }
 
@@ -325,7 +332,7 @@ void MainWindow::openFile(const QString& url)
         }
     }
 
-    auto offlineView = new TraceView();
+    auto offlineView = new TraceView;
     offlineView->setDocumentTitle(fileInfo.fileName());
     m_tabWidget->addTab(offlineView, fileInfo.fileName());
     m_tabWidget->setCurrentIndex(m_tabWidget->count() - 1);

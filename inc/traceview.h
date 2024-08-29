@@ -3,23 +3,26 @@
 
 #include <QTextEdit>
 #include <QHostAddress>
-#include "tracehighlighter.h"
+
+QT_BEGIN_NAMESPACE
+class TraceHighlighter;
+QT_END_NAMESPACE
 
 class TraceView : public QTextEdit
 {
     Q_OBJECT
 
 public:
+    TraceView();
     ~TraceView();
-    TraceView(bool live = false, bool autoscroll = false);
 
-    bool isAutoscroll() const { return m_autoScroll; }
-    QString getRemoteAddress() const;
-    bool isHighlightUpdated() const { return m_highlightUpdated; }
-    void updateHighlighting();
-    bool askedToUpdateHighlight() const { return m_askedToUpdateHighlight; }
-    void setAskedToUpdateHighlight();
+    inline virtual bool isAutoScrollEnabled() const;
+
+    inline bool isHighlightUpdated() const;
+    inline bool wasHighlightUpdateRequested() const;
+    void setHighlightUpdateRequested();
     void disableCustomHighlighting();
+    void updateHighlighting();
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
@@ -29,27 +32,16 @@ public slots:
     void save();
     void clear();
     void clearUntilHere();
-    void toggleAutoScroll();
     void setCustomHighlights();
-    void promptAndSetRemoteInterface();
-
-    void onSocketBindResult(QString, quint16, bool);
-    void onNewTracesReady(QStringList);
     void onHighlightingChanged();
 
-signals:
-    void interfaceChangeRequested(QString);
-    void portChangeRequested(quint16);
-
-private:
-    void createActions();
-    void createSetHostActions();
-
-    QAction* toAction(QString&) const;
-    void changeInterface(const QString&);
-    void changePort();
+protected:
+    void createTraceActions();
+    void createNetworkActions();
 
     QString toHtmlWithAdditionalFormats();
+    QAction* toAction(QString&) const;
+
 
     //! [Actions]
     QAction* m_saveAct{nullptr};
@@ -64,21 +56,31 @@ private:
     QAction* m_setLocalItfAct{nullptr};
     QAction* m_setRemoteItfAct{nullptr};
     QAction* m_setSerialItfAct{nullptr};
+
     QAction* m_setPortAct{nullptr};
     //! [Actions]
 
     //! [Attr]
-    QAction*     m_lastSetItfAct{nullptr};
-    bool         m_liveview{false};
-    bool         m_autoScroll{false};
     QTextCursor  m_clearUntilCursor;
-    quint16      m_currentPort{911}; // for context menu
-    QString      m_remoteAddress{"192.168.137.1"}; // For context menu, managed on gui
-    QString      m_waitingStep{"oooo0"};
 
     TraceHighlighter* m_highlighter{nullptr};
     bool         m_highlightUpdated{true};
-    bool         m_askedToUpdateHighlight{false};
+    bool         m_highlightUpdateRequested{false};
 };
+
+inline bool TraceView::isAutoScrollEnabled() const
+{
+    return false;
+}
+
+inline bool TraceView::isHighlightUpdated() const
+{
+    return m_highlightUpdated;
+}
+
+inline bool TraceView::wasHighlightUpdateRequested() const
+{
+    return m_highlightUpdateRequested;
+}
 
 #endif // TRACEVIEW_H

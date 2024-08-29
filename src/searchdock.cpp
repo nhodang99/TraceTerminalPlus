@@ -1,5 +1,8 @@
 #include "inc/searchdock.h"
+#include "inc/constants.h"
+#include "inc/advancedsearchitem.h"
 #include <QDebug>
+#include <QSettings>
 #include <QDialog>
 #include <QLabel>
 #include <QPushButton>
@@ -10,13 +13,16 @@
 #include <QHideEvent>
 #include <QCheckBox>
 #include <QMessageBox>
-#include "inc/advancedsearchitem.h"
 
-SearchDock::SearchDock(QWidget* parent, bool caseSensitive, bool loopSearch)
+SearchDock::SearchDock(QWidget* parent)
     : QDockWidget(parent, Qt::Widget)
 {
     setWindowTitle("Search");
     setAllowedAreas(Qt::BottomDockWidgetArea);
+
+    QSettings settings(Config::CONFIG_DIR, QSettings::IniFormat);
+    bool caseSensitive = settings.value(Config::SEARCH_CASESENSITIVE, false).toBool();
+    bool loopSearch = settings.value(Config::SEARCH_LOOPSEARCH, false).toBool();
 
     auto findLabel = new QLabel("Enter text:");
     m_lineEdit = new QLineEdit;
