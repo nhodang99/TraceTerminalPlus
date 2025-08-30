@@ -1,4 +1,4 @@
-[![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=nhodang99)](https://github.com/anuraghazra/github-readme-stats)
+[![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=nhodang99&theme=gruvbox_light&show_icons=true)](https://github.com/anuraghazra/github-readme-stats)
 
 # TraceTerminal++
 A tool written in Qt to help tracing and debugging for applications via UDP connection
